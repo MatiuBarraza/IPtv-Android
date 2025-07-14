@@ -66,8 +66,14 @@ class M3UParser {
 
                                 Log.d(TAG, "Parseando canal: $nombre, categoría: $categoria")
 
-                                // Buscar logo en la API si no viene en la playlist, priorizando canales de Chile
-                                val logoFinal = if (logo.isNotEmpty()) logo else buscarLogo(nombre, indices)
+                                // Prioridad especial para GOL TV: siempre usar logo local si existe
+                                val logoFinal = if (nombre.equals("GOL TV", ignoreCase = true)) {
+                                    buscarLogoLocal(nombre, context) ?: if (logo.isNotEmpty()) logo else buscarLogoLocalPrimero(nombre, indices, context)
+                                } else if (logo.isNotEmpty()) {
+                                    logo
+                                } else {
+                                    buscarLogoLocalPrimero(nombre, indices, context)
+                                }
                                 
                                 // Creación del objeto Canal con la información extraída
                                 currentCanal = Canal(
@@ -109,6 +115,9 @@ class M3UParser {
 
         // Log final con el resultado del proceso
         Log.d(TAG, "Parseo completado. Categorías encontradas: ${categorias.size}")
+        // Mostrar la cantidad total de canales
+        val totalCanales = categorias.values.sumOf { it.canales.size }
+        Log.d(TAG, "Cantidad total de canales procesados: ${totalCanales}")
         return categorias.values.toList()
     }
 
@@ -160,15 +169,23 @@ class M3UParser {
     }
 
     /**
-     * Busca el logo de un canal, priorizando canales de Chile (CL) - Versión optimizada
+     * Busca el logo de un canal, priorizando logos locales de assets/logos/ primero
      * @param nombreCanal Nombre del canal a buscar
      * @param indices Índices optimizados para búsquedas rápidas
+     * @param context Contexto para acceder a assets
      * @return URL del logo encontrado o null si no se encuentra
      */
-    private fun buscarLogo(nombreCanal: String, indices: IndicesCanales): String? {
+    private fun buscarLogoLocalPrimero(nombreCanal: String, indices: IndicesCanales, context: Context): String? {
         val nombreNormalizado = nombreCanal.trim().lowercase()
         
-        // 1. Búsqueda exacta en Chile (más rápida usando índice)
+        // 1. PRIORIDAD MÁXIMA: Buscar en assets/logos/ primero
+        val logoLocal = buscarLogoLocal(nombreCanal, context)
+        if (logoLocal != null) {
+            Log.d(TAG, "Logo local encontrado para '$nombreCanal': $logoLocal")
+            return logoLocal
+        }
+        
+        // 2. Búsqueda exacta en Chile (usando índice)
         val canalChile = indices.canalesChile.find { 
             it.name.lowercase() == nombreNormalizado 
         }
@@ -177,14 +194,14 @@ class M3UParser {
             return canalChile.logo
         }
         
-        // 2. Búsqueda exacta en cualquier país (usando índice)
+        // 3. Búsqueda exacta en cualquier país (usando índice)
         val canalExacto = indices.porNombreExacto[nombreNormalizado]
         if (canalExacto != null) {
             Log.d(TAG, "Logo encontrado para '$nombreCanal' (${canalExacto.country}, exacto): ${canalExacto.logo}")
             return canalExacto.logo
         }
         
-        // 3. Búsqueda flexible (usando índice)
+        // 4. Búsqueda flexible (usando índice)
         val nombreFlexible = nombreNormalizado.replace(Regex("[^a-z0-9]"), "")
         val canalFlexible = indices.porNombreFlexible[nombreFlexible]
         if (canalFlexible != null) {
@@ -192,7 +209,7 @@ class M3UParser {
             return canalFlexible.logo
         }
         
-        // 4. Búsqueda por palabras clave más restrictiva
+        // 5. Búsqueda por palabras clave más restrictiva
         val palabrasClave = nombreNormalizado.split(Regex("\\s+")).filter { it.length > 2 }
         if (palabrasClave.isNotEmpty()) {
             // Buscar en Chile por palabras clave con coincidencia más específica
@@ -225,7 +242,7 @@ class M3UParser {
             }
         }
         
-        // 5. Búsqueda por similitud de nombre (solo para casos muy específicos)
+        // 6. Búsqueda por similitud de nombre (solo para casos muy específicos)
         if (nombreNormalizado.length > 5) {
             val canalSimilar = indices.canalesChile.find { canal ->
                 val nombreCanalLower = canal.name.lowercase()
@@ -240,6 +257,67 @@ class M3UParser {
         }
         
         Log.d(TAG, "No se encontró logo para '$nombreCanal'")
+        return null
+    }
+    
+    /**
+     * Busca logo local en assets/logos/ con múltiples estrategias de búsqueda
+     * @param nombreCanal Nombre del canal a buscar
+     * @param context Contexto para acceder a assets
+     * @return URL del logo local encontrado o null si no se encuentra
+     */
+    private fun buscarLogoLocal(nombreCanal: String, context: Context): String? {
+        val assetManager = context.assets
+        val posiblesExtensiones = listOf(".png", ".jpg", ".jpeg")
+        val nombreNormalizado = nombreCanal.trim()
+        
+        // Estrategia 1: Búsqueda exacta
+        for (ext in posiblesExtensiones) {
+            val assetPath = "logos/$nombreNormalizado$ext"
+            try {
+                assetManager.open(assetPath).close()
+                Log.d(TAG, "Logo local encontrado (exacto): $assetPath")
+                return "asset:///$assetPath"
+            } catch (_: Exception) {}
+        }
+        
+        // Estrategia 2: Búsqueda sin espacios ni caracteres especiales
+        val nombreLimpio = nombreNormalizado.replace(Regex("[^a-zA-Z0-9]"), "")
+        for (ext in posiblesExtensiones) {
+            val assetPath = "logos/$nombreLimpio$ext"
+            try {
+                assetManager.open(assetPath).close()
+                Log.d(TAG, "Logo local encontrado (limpio): $assetPath")
+                return "asset:///$assetPath"
+            } catch (_: Exception) {}
+        }
+        
+        // Estrategia 3: Búsqueda en minúsculas
+        val nombreLower = nombreNormalizado.lowercase()
+        for (ext in posiblesExtensiones) {
+            val assetPath = "logos/$nombreLower$ext"
+            try {
+                assetManager.open(assetPath).close()
+                Log.d(TAG, "Logo local encontrado (minúsculas): $assetPath")
+                return "asset:///$assetPath"
+            } catch (_: Exception) {}
+        }
+        
+        // Estrategia 4: Búsqueda por palabras clave (para nombres largos)
+        val palabras = nombreNormalizado.split(Regex("\\s+")).filter { it.length > 2 }
+        if (palabras.size > 1) {
+            for (palabra in palabras) {
+                for (ext in posiblesExtensiones) {
+                    val assetPath = "logos/$palabra$ext"
+                    try {
+                        assetManager.open(assetPath).close()
+                        Log.d(TAG, "Logo local encontrado (palabra clave): $assetPath")
+                        return "asset:///$assetPath"
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+        
         return null
     }
 

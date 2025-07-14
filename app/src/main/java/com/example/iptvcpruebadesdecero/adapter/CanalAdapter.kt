@@ -63,10 +63,25 @@ class CanalAdapter(
             // Establece el nombre del canal
             binding.tvCanalNombre.text = canal.nombre
             // Carga el logo del canal usando Glide
-            Glide.with(itemView.context)
-                .load(canal.logo)
-                .placeholder(R.drawable.placeholder_channel)
-                .into(binding.ivCanalLogo)
+            if (canal.logo != null && canal.logo.startsWith("asset:///")) {
+                // Cargar desde assets
+                val assetPath = canal.logo.removePrefix("asset:///")
+                try {
+                    val assetManager = itemView.context.assets
+                    val inputStream = assetManager.open(assetPath)
+                    val drawable = android.graphics.drawable.Drawable.createFromStream(inputStream, null)
+                    binding.ivCanalLogo.setImageDrawable(drawable)
+                    inputStream.close()
+                } catch (e: Exception) {
+                    // Si falla, usar placeholder
+                    binding.ivCanalLogo.setImageResource(R.drawable.placeholder_channel)
+                }
+            } else {
+                Glide.with(itemView.context)
+                    .load(canal.logo)
+                    .placeholder(R.drawable.placeholder_channel)
+                    .into(binding.ivCanalLogo)
+            }
             // Fondo dinámico
             if (adapterPosition == selectedPosition) {
                 binding.root.setCardBackgroundColor(0xFFB0B0B0.toInt()) // Gris
