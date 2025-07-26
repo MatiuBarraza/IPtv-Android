@@ -2,11 +2,13 @@ package com.example.iptvcpruebadesdecero
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
 import android.view.View
+import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -28,14 +30,31 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
     private val TAG = "LoginActivity"
     
+    // SharedPreferences para guardar las credenciales
+    private lateinit var sharedPreferences: SharedPreferences
+    private val PREFS_NAME = "LoginPrefs"
+    private val KEY_USERNAME = "saved_username"
+    private val KEY_PASSWORD = "saved_password"
+    private val KEY_SERVER = "selected_server"
+    
+    // Servidores disponibles
+    private val SERVER_LOS_VILOS = "Los Vilos"
+    private val SERVER_LA_SERENA = "La Serena"
+    private var currentServer = SERVER_LOS_VILOS // Servidor por defecto
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate iniciado")
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
+        // Inicializar SharedPreferences
+        sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        
         setupViews()
         setupListeners()
+        cargarCredencialesGuardadas()
+        cargarServidorGuardado()
         Log.d(TAG, "onCreate completado")
     }
 
@@ -73,6 +92,11 @@ class LoginActivity : AppCompatActivity() {
                 finish()
             }
 
+            // Listener para el botón de configuración
+            binding.buttonConfig.setOnClickListener {
+                showServerMenu()
+            }
+
             // TextWatchers para validación en tiempo real
             binding.editTextUsername.addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -108,6 +132,46 @@ class LoginActivity : AppCompatActivity() {
     }
 
     /**
+     * Muestra el menú desplegable para seleccionar servidor
+     */
+    private fun showServerMenu() {
+        val popupMenu = PopupMenu(this, binding.buttonConfig)
+        popupMenu.menuInflater.inflate(R.menu.server_menu, popupMenu.menu)
+        
+        // Marcar el servidor actual como seleccionado
+        when (currentServer) {
+            SERVER_LOS_VILOS -> popupMenu.menu.findItem(R.id.menu_server_los_vilos)?.isChecked = true
+            SERVER_LA_SERENA -> popupMenu.menu.findItem(R.id.menu_server_la_serena)?.isChecked = true
+        }
+        
+
+        
+        popupMenu.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.menu_server_los_vilos -> {
+                    if (currentServer != SERVER_LOS_VILOS) {
+                        currentServer = SERVER_LOS_VILOS
+                        guardarServidorSeleccionado()
+                        Toast.makeText(this, "Servidor seleccionado: Los Vilos", Toast.LENGTH_SHORT).show()
+                    }
+                    true
+                }
+                R.id.menu_server_la_serena -> {
+                    if (currentServer != SERVER_LA_SERENA) {
+                        currentServer = SERVER_LA_SERENA
+                        guardarServidorSeleccionado()
+                        Toast.makeText(this, "Servidor seleccionado: La Serena", Toast.LENGTH_SHORT).show()
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+        
+        popupMenu.show()
+    }
+
+    /**
      * Realiza la validación de login
      */
     private fun performLogin() {
@@ -134,7 +198,14 @@ class LoginActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val urlString = "http://iptv.ctvc.cl:80/playlist/$username/$password/m3u_plus?output=hls"
+                // Construir URL según el servidor seleccionado
+                val baseUrl = when (currentServer) {
+                    SERVER_LOS_VILOS -> "http://iptv.ctvc.cl:80"
+                    SERVER_LA_SERENA -> "https://tv.wntv.cl:443"
+                    else -> "http://iptv.ctvc.cl:80"
+                }
+                
+                val urlString = "$baseUrl/playlist/$username/$password/m3u_plus?output=hls"
                 val url = URL(urlString)
                 val connection = url.openConnection() as HttpURLConnection
                 connection.requestMethod = "GET"
@@ -150,6 +221,8 @@ class LoginActivity : AppCompatActivity() {
 
                     withContext(Dispatchers.Main) {
                         Log.d(TAG, "Login exitoso y playlist guardada")
+                        // Guardar las credenciales exitosas
+                        guardarCredenciales(username, password)
                         showSuccess("Login exitoso")
                         // Navegar a MainActivity
                         Log.d(TAG, "Iniciando MainActivity")
@@ -239,5 +312,92 @@ class LoginActivity : AppCompatActivity() {
      */
     private fun showSuccess(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+    
+    /**
+     * Guarda las credenciales en SharedPreferences
+     * @param username Nombre de usuario
+     * @param password Contraseña
+     */
+    private fun guardarCredenciales(username: String, password: String) {
+        try {
+            sharedPreferences.edit().apply {
+                putString(KEY_USERNAME, username)
+                putString(KEY_PASSWORD, password)
+                apply()
+            }
+            Log.d(TAG, "Credenciales guardadas exitosamente")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al guardar credenciales: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Carga las credenciales guardadas y las coloca en los campos de texto
+     */
+    private fun cargarCredencialesGuardadas() {
+        try {
+            val savedUsername = sharedPreferences.getString(KEY_USERNAME, "")
+            val savedPassword = sharedPreferences.getString(KEY_PASSWORD, "")
+            
+            if (!savedUsername.isNullOrEmpty()) {
+                binding.editTextUsername.setText(savedUsername)
+                Log.d(TAG, "Usuario cargado: $savedUsername")
+            }
+            
+            if (!savedPassword.isNullOrEmpty()) {
+                binding.editTextPassword.setText(savedPassword)
+                Log.d(TAG, "Contraseña cargada")
+            }
+            
+            // Actualizar el estado del botón después de cargar las credenciales
+            updateLoginButtonState()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al cargar credenciales guardadas: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Guarda el servidor seleccionado en SharedPreferences
+     */
+    private fun guardarServidorSeleccionado() {
+        try {
+            sharedPreferences.edit().apply {
+                putString(KEY_SERVER, currentServer)
+                apply()
+            }
+            Log.d(TAG, "Servidor guardado: $currentServer")
+            updateServerIndicator()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al guardar servidor: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Carga el servidor guardado desde SharedPreferences
+     */
+    private fun cargarServidorGuardado() {
+        try {
+            val savedServer = sharedPreferences.getString(KEY_SERVER, SERVER_LOS_VILOS)
+            currentServer = savedServer ?: SERVER_LOS_VILOS
+            Log.d(TAG, "Servidor cargado: $currentServer")
+            updateServerIndicator()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al cargar servidor guardado: ${e.message}", e)
+            currentServer = SERVER_LOS_VILOS
+        }
+    }
+
+    /**
+     * Actualiza el indicador visual del servidor seleccionado
+     */
+    private fun updateServerIndicator() {
+        // Cambiar el icono del botón según el servidor seleccionado
+        val iconRes = when (currentServer) {
+            SERVER_LOS_VILOS -> android.R.drawable.ic_menu_manage
+            SERVER_LA_SERENA -> android.R.drawable.ic_menu_manage
+            else -> android.R.drawable.ic_menu_manage
+        }
+        binding.buttonConfig.setImageResource(iconRes)
     }
 } 

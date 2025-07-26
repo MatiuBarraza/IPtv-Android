@@ -1,136 +1,159 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
     android:background="@drawable/fondo31"
     tools:context=".LoginActivity">
 
-    <LinearLayout
+    <!-- Botón de configuración en la esquina superior derecha -->
+    <ImageButton
+        android:id="@+id/buttonConfig"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:src="@android:drawable/ic_menu_manage"
+        android:background="@drawable/button_config_selector"
+        android:contentDescription="Configuración"
+        android:scaleType="centerInside"
+        android:padding="12dp"
+        android:elevation="4dp" />
+
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp"
-        android:gravity="center">
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:layout_below="@id/buttonConfig">
 
-        <!-- Solo logo centrado -->
-        <ImageView
-            android:id="@+id/imageLogo"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:src="@drawable/logo_empresa"
-            android:contentDescription="Logo de la empresa"
-            android:layout_marginTop="48dp"
-            android:layout_marginBottom="32dp"
-            android:layout_gravity="center" />
-
-        <!-- Título y subtítulo -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-            android:text="Bienvenido a CTVC.CL"
-            android:textSize="24sp"
-                android:textStyle="bold"
-                android:textColor="@color/black"
-            android:layout_marginBottom="24dp" />
-
-        <!-- Formulario de login -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginBottom="32dp"
+            android:padding="24dp"
             android:gravity="center">
 
-            <!-- Campo de usuario -->
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/textInputLayoutUsername"
-                android:layout_width="280dp"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:hint="Usuario"
-                app:startIconDrawable="@android:drawable/ic_menu_myplaces"
-                app:startIconTint="@color/black"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+            <!-- Solo logo centrado -->
+            <ImageView
+                android:id="@+id/imageLogo"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:src="@drawable/logo_empresa"
+                android:contentDescription="Logo de la empresa"
+                android:layout_marginTop="48dp"
+                android:layout_marginBottom="32dp"
+                android:layout_gravity="center" />
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editTextUsername"
-                    android:layout_width="match_parent"
+            <!-- Título y subtítulo -->
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:inputType="text"
-                    android:maxLines="1"
+                android:text="Bienvenido a CTVC.CL"
+                android:textSize="24sp"
+                    android:textStyle="bold"
                     android:textColor="@color/black"
-                    android:textColorHint="@color/black" />
+                android:layout_marginBottom="24dp" />
 
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <!-- Campo de contraseña -->
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/textInputLayoutPassword"
-                android:layout_width="280dp"
+            <!-- Formulario de login -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                android:hint="Contraseña"
-                app:startIconDrawable="@android:drawable/ic_lock_lock"
-                app:startIconTint="@color/black"
-                app:endIconMode="password_toggle"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                android:orientation="vertical"
+                android:layout_marginBottom="32dp"
+                android:gravity="center">
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editTextPassword"
-                    android:layout_width="match_parent"
+                <!-- Campo de usuario -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/textInputLayoutUsername"
+                    android:layout_width="280dp"
                     android:layout_height="wrap_content"
-                    android:inputType="textPassword"
-                    android:maxLines="1"
+                    android:layout_marginBottom="16dp"
+                    android:hint="Usuario"
+                    app:startIconDrawable="@android:drawable/ic_menu_myplaces"
+                    app:startIconTint="@color/black"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editTextUsername"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="text"
+                        android:maxLines="1"
+                        android:textColor="@color/black"
+                        android:textColorHint="@color/black" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Campo de contraseña -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/textInputLayoutPassword"
+                    android:layout_width="280dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    android:hint="Contraseña"
+                    app:startIconDrawable="@android:drawable/ic_lock_lock"
+                    app:startIconTint="@color/black"
+                    app:endIconMode="password_toggle"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editTextPassword"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPassword"
+                        android:maxLines="1"
+                        android:textColor="@color/black"
+                        android:textColorHint="@color/black" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Barra de progreso -->
+                <ProgressBar
+                    android:id="@+id/progressBar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:visibility="gone"
+                    android:layout_marginBottom="16dp" />
+
+                <!-- Botón de login -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonLogin"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="Iniciar Sesión"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/white"
+                    app:cornerRadius="24dp"
+                    android:backgroundTint="@color/black"
+                    android:layout_marginBottom="12dp"
+                    android:layout_gravity="center"
+                    android:paddingStart="32dp"
+                    android:paddingEnd="32dp"
+                    style="@style/Widget.MaterialComponents.Button" />
+
+                <!-- Botón de salir -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonExit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="Salir"
+                    android:textSize="14sp"
                     android:textColor="@color/black"
-                    android:textColorHint="@color/black" />
+                    app:cornerRadius="20dp"
+                    android:layout_gravity="center"
+                    android:paddingStart="28dp"
+                    android:paddingEnd="28dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <!-- Barra de progreso -->
-            <ProgressBar
-                android:id="@+id/progressBar"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:visibility="gone"
-                android:layout_marginBottom="16dp" />
-
-            <!-- Botón de login -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonLogin"
-                android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:text="Iniciar Sesión"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="@color/white"
-                app:cornerRadius="24dp"
-                android:backgroundTint="@color/black"
-                android:layout_marginBottom="12dp"
-                android:layout_gravity="center"
-                android:paddingStart="32dp"
-                android:paddingEnd="32dp"
-                style="@style/Widget.MaterialComponents.Button" />
-
-            <!-- Botón de salir -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonExit"
-                android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:text="Salir"
-                android:textSize="14sp"
-                android:textColor="@color/black"
-                app:cornerRadius="20dp"
-                android:layout_gravity="center"
-                android:paddingStart="28dp"
-                android:paddingEnd="28dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+            </LinearLayout>
 
         </LinearLayout>
 
-    </LinearLayout>
+    </ScrollView>
 
-</ScrollView> 
+</RelativeLayout> 
