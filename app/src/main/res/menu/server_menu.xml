@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/menu_server_los_vilos"
+            android:title="Servidor Los Vilos"
+            android:checkable="true" />
+        
+        <item
+            android:id="@+id/menu_server_la_serena"
+            android:title="Servidor La Serena"
+            android:checkable="true" />
+    </group>
+</menu> 
