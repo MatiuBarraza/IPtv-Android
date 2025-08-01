@@ -80,6 +80,11 @@ class CanalAdapter(
                 Glide.with(itemView.context)
                     .load(canal.logo)
                     .placeholder(R.drawable.placeholder_channel)
+                    .error(R.drawable.placeholder_channel)
+                    .timeout(3000) // Reducir a 3 segundos
+                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
+                    .skipMemoryCache(false)
+                    .override(120, 120) // Limitar tamaño para optimizar
                     .into(binding.ivCanalLogo)
             }
             // Fondo dinámico

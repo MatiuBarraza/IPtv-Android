@@ -271,12 +271,66 @@ class M3UParser {
         val posiblesExtensiones = listOf(".png", ".jpg", ".jpeg")
         val nombreNormalizado = nombreCanal.trim()
         
-        // Estrategia 1: Búsqueda exacta
+        // Estrategia 1: Búsqueda exacta (insensible a mayúsculas/minúsculas)
         for (ext in posiblesExtensiones) {
             val assetPath = "logos/$nombreNormalizado$ext"
             try {
                 assetManager.open(assetPath).close()
                 Log.d(TAG, "Logo local encontrado (exacto): $assetPath")
+                return "asset:///$assetPath"
+            } catch (_: Exception) {}
+        }
+        
+        // Estrategia 1.5: Búsqueda exacta en minúsculas
+        val nombreLower = nombreNormalizado.lowercase()
+        for (ext in posiblesExtensiones) {
+            val assetPath = "logos/$nombreLower$ext"
+            try {
+                assetManager.open(assetPath).close()
+                Log.d(TAG, "Logo local encontrado (exacto minúsculas): $assetPath")
+                return "asset:///$assetPath"
+            } catch (_: Exception) {}
+        }
+        
+        // Estrategia 1.6: Búsqueda exacta en mayúsculas
+        val nombreUpper = nombreNormalizado.uppercase()
+        for (ext in posiblesExtensiones) {
+            val assetPath = "logos/$nombreUpper$ext"
+            try {
+                assetManager.open(assetPath).close()
+                Log.d(TAG, "Logo local encontrado (exacto mayúsculas): $assetPath")
+                return "asset:///$assetPath"
+            } catch (_: Exception) {}
+        }
+        
+        // Estrategia 1.7: Búsqueda con capitalización de palabras (Title Case)
+        val nombreTitleCase = nombreNormalizado.split(" ").joinToString(" ") { word ->
+            if (word.isNotEmpty()) {
+                word.lowercase().replaceFirstChar { it.uppercase() }
+            } else {
+                word
+            }
+        }
+        for (ext in posiblesExtensiones) {
+            val assetPath = "logos/$nombreTitleCase$ext"
+            try {
+                assetManager.open(assetPath).close()
+                Log.d(TAG, "Logo local encontrado (title case): $assetPath")
+                return "asset:///$assetPath"
+            } catch (_: Exception) {}
+        }
+        
+        // Estrategia 1.8: Búsqueda con primera letra mayúscula y resto minúsculas
+        val nombreCapitalized = if (nombreNormalizado.isNotEmpty()) {
+            nombreNormalizado.lowercase().replaceFirstChar { it.uppercase() }
+        } else {
+            nombreNormalizado
+        }
+        for (ext in posiblesExtensiones) {
+            val assetPath = "logos/$nombreCapitalized$ext"
+            try {
+                assetManager.open(assetPath).close()
+                Log.d(TAG, "Logo local encontrado (capitalized): $assetPath")
                 return "asset:///$assetPath"
             } catch (_: Exception) {}
         }
@@ -292,18 +346,7 @@ class M3UParser {
             } catch (_: Exception) {}
         }
         
-        // Estrategia 3: Búsqueda en minúsculas
-        val nombreLower = nombreNormalizado.lowercase()
-        for (ext in posiblesExtensiones) {
-            val assetPath = "logos/$nombreLower$ext"
-            try {
-                assetManager.open(assetPath).close()
-                Log.d(TAG, "Logo local encontrado (minúsculas): $assetPath")
-                return "asset:///$assetPath"
-            } catch (_: Exception) {}
-        }
-        
-        // Estrategia 4: Búsqueda por palabras clave (para nombres largos)
+        // Estrategia 3: Búsqueda por palabras clave (para nombres largos)
         val palabras = nombreNormalizado.split(Regex("\\s+")).filter { it.length > 2 }
         if (palabras.size > 1) {
             for (palabra in palabras) {

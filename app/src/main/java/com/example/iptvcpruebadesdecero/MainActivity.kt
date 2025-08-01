@@ -9,6 +9,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.example.iptvcpruebadesdecero.adapter.CategoriaAdapter
 import com.example.iptvcpruebadesdecero.databinding.ActivityMainBinding
 import com.example.iptvcpruebadesdecero.model.Canal
@@ -45,6 +47,7 @@ class MainActivity : AppCompatActivity() {
             setupViewModel()
             setupRecyclerView()
             setupSearch()
+            setupGlideConfiguration()
             observeViewModel()
             cargarPlaylist()
         } catch (e: Exception) {
@@ -110,6 +113,20 @@ class MainActivity : AppCompatActivity() {
                 viewModel.buscarCanales(s?.toString() ?: "")
             }
         })
+    }
+
+    /**
+     * Configura Glide para optimizar la carga de logos.
+     */
+    private fun setupGlideConfiguration() {
+        try {
+            // Configurar Glide para optimizar la carga de imágenes
+            Glide.get(this).setMemoryCategory(com.bumptech.glide.MemoryCategory.HIGH)
+            
+            Log.d("MainActivity", "Glide configurado con cache de memoria optimizado")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error configurando Glide: ${e.message}", e)
+        }
     }
 
     /**
