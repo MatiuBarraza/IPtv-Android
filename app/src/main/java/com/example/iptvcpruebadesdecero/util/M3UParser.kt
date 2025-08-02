@@ -12,23 +12,36 @@ import org.json.JSONObject
 /**
  * Clase encargada de parsear archivos M3U (formato de lista de reproducción IPTV).
  * Convierte el contenido del archivo M3U en una lista de categorías con sus respectivos canales.
+ * 
+ * Funcionalidades principales:
+ * - Parseo de archivos M3U/M3U8
+ * - Búsqueda inteligente de logos de canales
+ * - Carga de información de canales desde JSON
+ * - Optimización de búsquedas con índices
+ * - Soporte para logos locales y remotos
  */
 class M3UParser {
     private val TAG = "M3UParser"
 
-    // Clase de datos para representar un canal del JSON
+    /**
+     * Clase de datos para representar un canal del archivo JSON de canales.
+     * Contiene la información básica de un canal para búsquedas de logos.
+     */
     private data class CanalInfo(
-        val name: String,
-        val logo: String,
-        val country: String
+        val name: String,    // Nombre del canal
+        val logo: String,    // URL del logo
+        val country: String  // País del canal (ej: "CL" para Chile)
     )
 
-    // Índices para búsquedas rápidas
+    /**
+     * Estructura de datos para almacenar índices optimizados de búsqueda.
+     * Permite búsquedas rápidas de logos por diferentes criterios.
+     */
     private data class IndicesCanales(
-        val porNombreExacto: Map<String, CanalInfo>,
-        val porNombreFlexible: Map<String, CanalInfo>,
-        val canalesChile: List<CanalInfo>,
-        val todosLosCanales: List<CanalInfo>
+        val porNombreExacto: Map<String, CanalInfo>,      // Búsqueda exacta por nombre
+        val porNombreFlexible: Map<String, CanalInfo>,     // Búsqueda flexible (sin espacios/símbolos)
+        val canalesChile: List<CanalInfo>,                 // Canales de Chile (prioridad alta)
+        val todosLosCanales: List<CanalInfo>               // Todos los canales disponibles
     )
 
     /**
@@ -36,7 +49,7 @@ class M3UParser {
      * Ahora recibe el contexto para poder acceder a assets y buscar logos en channels.json
      * 
      * @param inputStream El stream de entrada que contiene el archivo M3U
-     * @param context Contexto para acceder a assets
+     * @param context Contexto para acceder a assets y archivos locales
      * @return Lista de categorías con sus canales correspondientes
      * @throws Exception Si ocurre un error al leer o parsear el archivo
      */
@@ -47,7 +60,7 @@ class M3UParser {
         var currentCanal: Canal? = null // Variable temporal para almacenar el canal que se está procesando
         var lineCount = 0 // Contador de líneas para el manejo de errores
 
-        // Cargar información de canales del JSON una sola vez
+        // Cargar información de canales del JSON una sola vez para optimizar búsquedas
         val indices = cargarCanalesInfo(context)
 
         try {
@@ -122,7 +135,9 @@ class M3UParser {
     }
 
     /**
-     * Carga la información de canales desde el archivo channels.json y crea índices para búsquedas rápidas
+     * Carga la información de canales desde el archivo channels.json y crea índices para búsquedas rápidas.
+     * Optimiza las búsquedas de logos creando mapas indexados por diferentes criterios.
+     * 
      * @param context Contexto para acceder a assets
      * @return Índices optimizados para búsquedas rápidas
      */
@@ -133,16 +148,19 @@ class M3UParser {
         val canalesChile = mutableListOf<CanalInfo>()
         
         try {
+            // Leer el archivo JSON de canales desde assets
             val input = context.assets.open("channels.json")
             val json = input.bufferedReader().use { it.readText() }
             val array = JSONArray(json)
             
+            // Procesar cada canal del JSON
             for (i in 0 until array.length()) {
                 val obj = array.getJSONObject(i)
                 val name = obj.getString("name").trim()
                 val logo = obj.optString("logo", "")
                 val country = obj.optString("country", "")
                 
+                // Solo procesar canales que tengan logo
                 if (logo.isNotEmpty()) {
                     val canalInfo = CanalInfo(name, logo, country)
                     canalesInfo.add(canalInfo)
@@ -151,9 +169,11 @@ class M3UParser {
                     val nombreLower = name.lowercase()
                     porNombreExacto[nombreLower] = canalInfo
                     
+                    // Crear índice flexible (sin espacios ni símbolos)
                     val nombreFlexible = nombreLower.replace(Regex("[^a-z0-9]"), "")
                     porNombreFlexible[nombreFlexible] = canalInfo
                     
+                    // Priorizar canales de Chile
                     if (country == "CL") {
                         canalesChile.add(canalInfo)
                     }
@@ -169,7 +189,9 @@ class M3UParser {
     }
 
     /**
-     * Busca el logo de un canal, priorizando logos locales de assets/logos/ primero
+     * Busca el logo de un canal, priorizando logos locales de assets/logos/ primero.
+     * Implementa múltiples estrategias de búsqueda para encontrar el logo más apropiado.
+     * 
      * @param nombreCanal Nombre del canal a buscar
      * @param indices Índices optimizados para búsquedas rápidas
      * @param context Contexto para acceder a assets
@@ -261,7 +283,9 @@ class M3UParser {
     }
     
     /**
-     * Busca logo local en assets/logos/ con múltiples estrategias de búsqueda
+     * Busca logo local en assets/logos/ con múltiples estrategias de búsqueda.
+     * Intenta diferentes variaciones del nombre del canal para encontrar el logo.
+     * 
      * @param nombreCanal Nombre del canal a buscar
      * @param context Contexto para acceder a assets
      * @return URL del logo local encontrado o null si no se encuentra
@@ -365,14 +389,17 @@ class M3UParser {
     }
 
     /**
-     * Calcula la distancia de Levenshtein entre dos strings
+     * Calcula la distancia de Levenshtein entre dos strings.
+     * Se usa para encontrar nombres de canales similares.
+     * 
      * @param s1 Primer string
      * @param s2 Segundo string
-     * @return Distancia de Levenshtein
+     * @return Distancia de Levenshtein (número de cambios necesarios)
      */
     private fun calcularDistanciaLevenshtein(s1: String, s2: String): Int {
         val matrix = Array(s1.length + 1) { IntArray(s2.length + 1) }
         
+        // Inicializar primera fila y columna
         for (i in 0..s1.length) {
             matrix[i][0] = i
         }
@@ -380,6 +407,7 @@ class M3UParser {
             matrix[0][j] = j
         }
         
+        // Llenar la matriz de distancia
         for (i in 1..s1.length) {
             for (j in 1..s2.length) {
                 val cost = if (s1[i - 1] == s2[j - 1]) 0 else 1

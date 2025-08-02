@@ -16,23 +16,33 @@ import kotlinx.coroutines.withContext
 /**
  * ViewModel principal de la aplicación que maneja la lógica de negocio relacionada con la playlist IPTV.
  * Implementa el patrón MVVM (Model-View-ViewModel) para separar la lógica de la interfaz de usuario.
+ * 
+ * Funcionalidades principales:
+ * - Carga y parseo de playlist M3U
+ * - Búsqueda de canales en tiempo real
+ * - Gestión de estado de la aplicación
+ * - Manejo de errores
+ * - Persistencia de datos durante cambios de configuración
  */
 class MainViewModel : ViewModel() {
     /**
      * LiveData mutable que contiene la lista de categorías de la playlist.
      * Solo se puede modificar desde dentro del ViewModel.
+     * Los observadores pueden ver los cambios automáticamente.
      */
     private val _categorias = MutableLiveData<List<Categoria>>()
     
     /**
      * LiveData público que expone la lista de categorías a la UI.
-     * Los observadores solo pueden leer este valor.
+     * Los observadores solo pueden leer este valor, no modificarlo.
+     * Esto garantiza la inmutabilidad de los datos desde la UI.
      */
     val categorias: LiveData<List<Categoria>> = _categorias
 
     /**
      * LiveData mutable para manejar mensajes de error.
      * Solo se puede modificar desde dentro del ViewModel.
+     * Se usa para comunicar errores a la UI de forma reactiva.
      */
     private val _error = MutableLiveData<String>()
     
@@ -43,31 +53,36 @@ class MainViewModel : ViewModel() {
     val error: LiveData<String> = _error
 
     // Lista original de categorías para mantener los datos sin filtrar
+    // Se usa para restaurar la lista completa cuando se limpia la búsqueda
     private var categoriasOriginales: List<Categoria> = emptyList()
 
     /**
      * Busca canales que coincidan con el texto de búsqueda.
      * La búsqueda se realiza en el nombre del canal y es insensible a mayúsculas/minúsculas.
+     * Filtra las categorías para mostrar solo aquellas que contengan canales que coincidan.
      * 
-     * @param query Texto de búsqueda
+     * @param query Texto de búsqueda (puede estar vacío para restaurar la lista completa)
      */
     fun buscarCanales(query: String) {
         if (query.isEmpty()) {
-            // Si la búsqueda está vacía, restaurar la lista original
+            // Si la búsqueda está vacía, restaurar la lista original completa
             _categorias.value = categoriasOriginales
             return
         }
 
         // Filtrar canales que coincidan con la búsqueda
         val categoriasFiltradas = categoriasOriginales.map { categoria ->
+            // Filtrar canales dentro de cada categoría
             val canalesFiltrados = categoria.canales.filter { canal ->
                 canal.nombre.contains(query, ignoreCase = true)
             }
+            // Solo incluir categorías que tengan canales después del filtrado
             if (canalesFiltrados.isNotEmpty()) {
                 categoria.copy(canales = canalesFiltrados.toMutableList())
             } else null
-        }.filterNotNull()
+        }.filterNotNull() // Eliminar categorías vacías
 
+        // Actualizar el LiveData con las categorías filtradas
         _categorias.value = categoriasFiltradas
     }
 
@@ -82,10 +97,13 @@ class MainViewModel : ViewModel() {
      * @param context Contexto de la aplicación necesario para acceder a los archivos internos
      */
     fun cargarPlaylist(context: Context) {
+        // Usar viewModelScope para manejar el ciclo de vida del ViewModel
         viewModelScope.launch {
             try {
                 // Inicio del proceso de carga
                 Log.d("MainViewModel", "Iniciando carga de playlist desde almacenamiento interno")
+                
+                // Abrir el archivo M3U guardado durante el login
                 val inputStream = context.openFileInput("downloaded_playlist.m3u")
                 Log.d("MainViewModel", "Archivo de playlist encontrado en almacenamiento interno")
                 
@@ -104,8 +122,9 @@ class MainViewModel : ViewModel() {
                     _error.postValue("No se encontraron canales en la playlist")
                 } else {
                     Log.d("MainViewModel", "Actualizando LiveData con ${categoriasParseadas.size} categorías")
-                    // Guardar las categorías originales
+                    // Guardar las categorías originales para búsquedas posteriores
                     categoriasOriginales = categoriasParseadas
+                    // Actualizar el LiveData en el hilo principal
                     _categorias.postValue(categoriasParseadas)
                 }
             } catch (e: Exception) {

@@ -19,24 +19,36 @@ import android.os.Looper
  * Actividad que maneja la reproducción de streams IPTV.
  * Utiliza VLC para reproducir el contenido multimedia.
  * Implementa un reproductor de video a pantalla completa con controles personalizados.
+ * 
+ * Funcionalidades principales:
+ * - Reproducción de streams IPTV usando VLC
+ * - Controles de reproducción (play/pause, adelantar/retroceder)
+ * - Navegación entre canales (anterior/siguiente)
+ * - Controles táctiles para mostrar/ocultar interfaz
+ * - Barra de progreso con tiempo actual/total
+ * - Modo pantalla completa
  */
 class PlayerActivity : AppCompatActivity() {
-    // Binding para acceder a las vistas de manera segura
+    // ViewBinding para acceder a las vistas de manera segura
     private lateinit var binding: ActivityPlayerBinding
 
-    // Lista de canales y posición actual
+    // Lista de canales y posición actual en la lista
     private var canales: List<Canal> = emptyList()
     private var currentPosition: Int = -1
 
-    // Instancia del reproductor VLC
+    // Instancias del reproductor VLC
     private var libVLC: LibVLC? = null
     private var vlcPlayer: VLCMediaPlayer? = null
 
-    // Variables para control de UI
-    private var isPlaying = true
-    private var controlsVisible = false
-    private val handler = Handler(Looper.getMainLooper())
+    // Variables para control de UI y estado
+    private var isPlaying = true // Estado de reproducción
+    private var controlsVisible = false // Visibilidad de controles
+    private val handler = Handler(Looper.getMainLooper()) // Handler para tareas programadas
+    
+    // Runnable para ocultar controles automáticamente
     private val hideControlsRunnable = Runnable { hideControls() }
+    
+    // Runnable para mostrar error si no se puede cargar el canal
     private val splashTimeoutRunnable = Runnable {
         binding.loadingAnimation.visibility = View.GONE
         binding.playerView.visibility = View.VISIBLE
@@ -47,10 +59,12 @@ class PlayerActivity : AppCompatActivity() {
             .setCancelable(false)
             .show()
     }
+    
+    // Runnable para actualizar la barra de progreso cada segundo
     private val updateProgressRunnable = object : Runnable {
         override fun run() {
             updateProgressBar()
-            handler.postDelayed(this, 1000)
+            handler.postDelayed(this, 1000) // Actualizar cada segundo
         }
     }
 
@@ -64,6 +78,7 @@ class PlayerActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         // Obtener la lista de canales y la posición desde el intent de forma segura
+        // Manejo diferente según la versión de Android para compatibilidad
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             canales = intent.getSerializableExtra("canales", ArrayList::class.java) as? List<Canal> ?: emptyList()
         } else {
@@ -72,35 +87,39 @@ class PlayerActivity : AppCompatActivity() {
         }
         currentPosition = intent.getIntExtra("position", -1)
 
+        // Validar que se recibieron los datos correctos
         if (canales.isEmpty() || currentPosition == -1) {
             Toast.makeText(this, "Error: No se pudieron cargar los datos del canal.", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
 
-        setupLoadingAnimation()
-        setupVLCPlayer()
-        setupControls()
-        setupTouchListener()
-        showControls()
+        // Configurar la actividad
+        setupLoadingAnimation() // Configurar animación de carga
+        setupVLCPlayer() // Configurar reproductor VLC
+        setupControls() // Configurar controles personalizados
+        setupTouchListener() // Configurar listener de toques
+        showControls() // Mostrar controles inicialmente
     }
 
     /**
      * Configura la animación de carga Lottie.
+     * Muestra una animación mientras se carga el canal.
      */
     private fun setupLoadingAnimation() {
         binding.loadingAnimation.apply {
-            setAnimation("CargaTV - 1749346448115.json")
+            setAnimation("CargaTV - 1749346448115.json") // Archivo de animación Lottie
             repeatCount = -1 // Repetir indefinidamente
             playAnimation()
         }
     }
 
     /**
-     * Configura los controles personalizados.
+     * Configura los controles personalizados del reproductor.
+     * Incluye botones de navegación, reproducción y barra de progreso.
      */
     private fun setupControls() {
-        // Botón de volver
+        // Botón de volver - cierra la actividad
         binding.backButton.setOnClickListener {
             finish()
         }
@@ -115,7 +134,7 @@ class PlayerActivity : AppCompatActivity() {
                 binding.playPauseButton.setImageResource(android.R.drawable.ic_media_pause)
             }
             isPlaying = !isPlaying
-            resetControlsTimer()
+            resetControlsTimer() // Reiniciar timer para ocultar controles
         }
 
         // Botón de canal anterior
@@ -140,7 +159,7 @@ class PlayerActivity : AppCompatActivity() {
         binding.forwardButton.setOnClickListener {
             vlcPlayer?.let { player ->
                 val currentTime = player.time
-                player.time = currentTime + 5000
+                player.time = currentTime + 5000 // Adelantar 5 segundos
             }
             resetControlsTimer()
         }
@@ -149,26 +168,31 @@ class PlayerActivity : AppCompatActivity() {
         binding.rewindButton.setOnClickListener {
             vlcPlayer?.let { player ->
                 val currentTime = player.time
-                player.time = maxOf(0, currentTime - 5000)
+                player.time = maxOf(0, currentTime - 5000) // Retroceder 5 segundos, mínimo 0
             }
             resetControlsTimer()
         }
 
-        // Barra de progreso (SeekBar)
+        // Barra de progreso (SeekBar) para navegar en el contenido
         binding.progressSeekBar.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
-            var userSeeking = false
+            var userSeeking = false // Flag para evitar actualizaciones durante el seeking
+            
             override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser && vlcPlayer != null && vlcPlayer!!.length > 0) {
+                    // Calcular el tiempo basado en el progreso de la barra
                     val newTime = (progress / 1000.0 * vlcPlayer!!.length).toLong()
                     binding.currentTimeText.text = formatMillis(newTime)
                 }
             }
+            
             override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {
                 userSeeking = true
             }
+            
             override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {
                 userSeeking = false
                 if (vlcPlayer != null && vlcPlayer!!.length > 0) {
+                    // Aplicar el cambio de tiempo al reproductor
                     val newTime = (seekBar!!.progress / 1000.0 * vlcPlayer!!.length).toLong()
                     vlcPlayer!!.time = newTime
                 }
@@ -178,11 +202,13 @@ class PlayerActivity : AppCompatActivity() {
 
     /**
      * Configura el listener de toques para mostrar/ocultar controles.
+     * Permite controlar la visibilidad de la interfaz con toques en la pantalla.
      */
     private fun setupTouchListener() {
         binding.playerView.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    // Alternar visibilidad de controles con un toque
                     if (controlsVisible) {
                         hideControls()
                     } else {
@@ -197,17 +223,19 @@ class PlayerActivity : AppCompatActivity() {
 
     /**
      * Muestra los controles y programa su ocultación automática.
+     * Hace visible toda la interfaz de controles.
      */
     private fun showControls() {
         controlsVisible = true
         binding.topBarLayout.visibility = View.VISIBLE
         binding.controlsBar.visibility = View.VISIBLE
         binding.progressBarLayout.visibility = View.VISIBLE
-        resetControlsTimer()
+        resetControlsTimer() // Programar ocultación automática
     }
 
     /**
-     * Oculta los controles.
+     * Oculta los controles del reproductor.
+     * Permite una experiencia de reproducción más inmersiva.
      */
     private fun hideControls() {
         controlsVisible = false
@@ -218,6 +246,7 @@ class PlayerActivity : AppCompatActivity() {
 
     /**
      * Reinicia el timer para ocultar controles automáticamente.
+     * Los controles se ocultan después de 3 segundos de inactividad.
      */
     private fun resetControlsTimer() {
         handler.removeCallbacks(hideControlsRunnable)
@@ -225,26 +254,36 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     /**
-     * Carga un canal específico.
+     * Carga un canal específico en el reproductor.
+     * 
+     * @param position Posición del canal en la lista
      */
     private fun loadChannel(position: Int) {
         val canal = canales.getOrNull(position)
         if (canal != null) {
+            // Actualizar nombre del canal en la interfaz
             binding.channelNameText.text = canal.nombre
             binding.loadingAnimation.visibility = View.VISIBLE
+            
             // Detener reproducción actual
             vlcPlayer?.stop()
-            // Preparar nuevo media
+            
+            // Preparar nuevo media con optimizaciones
             val media = Media(libVLC, Uri.parse(canal.url))
-            media.setHWDecoderEnabled(true, false)
-            // Forzar salida de audio a android_audiotrack
-            media.addOption(":aout=android_audiotrack")
+            media.setHWDecoderEnabled(true, false) // Habilitar decodificación por hardware
+            media.addOption(":aout=android_audiotrack") // Forzar salida de audio específica
+            
+            // Configurar el reproductor
             vlcPlayer?.media = media
-            // Asegurar volumen
-            vlcPlayer?.volume = 100
+            vlcPlayer?.volume = 100 // Asegurar volumen máximo
+            
+            // Programar timeout para mostrar error si no carga
             handler.removeCallbacks(splashTimeoutRunnable)
-            handler.postDelayed(splashTimeoutRunnable, 10000)
+            handler.postDelayed(splashTimeoutRunnable, 10000) // 10 segundos de timeout
+            
+            // Iniciar reproducción
             vlcPlayer?.play()
+            
             // Seleccionar automáticamente la primera pista de audio disponible
             vlcPlayer?.let { player ->
                 val audioTracks = player.audioTracks
@@ -253,8 +292,11 @@ class PlayerActivity : AppCompatActivity() {
                     player.setAudioTrack(firstTrackId)
                 }
             }
+            
+            // Actualizar estado de reproducción
             isPlaying = true
             binding.playPauseButton.setImageResource(android.R.drawable.ic_media_pause)
+            
             // Iniciar actualización de barra de progreso
             handler.removeCallbacks(updateProgressRunnable)
             handler.post(updateProgressRunnable)
@@ -267,7 +309,7 @@ class PlayerActivity : AppCompatActivity() {
      */
     private fun setupVLCPlayer() {
         try {
-            // Inicializar LibVLC
+            // Inicializar LibVLC con opciones optimizadas
             libVLC = LibVLC(this, arrayListOf("--no-drop-late-frames", "--no-skip-frames"))
             vlcPlayer = VLCMediaPlayer(libVLC)
 
@@ -279,33 +321,36 @@ class PlayerActivity : AppCompatActivity() {
                 return
             }
 
-            // Mostrar nombre del canal
+            // Mostrar nombre del canal en la interfaz
             binding.channelNameText.text = canal.nombre
 
             // Asignar el VLCVideoLayout al reproductor
             vlcPlayer?.attachViews(binding.playerView, null, false, false)
 
-            // Preparar el Media
+            // Preparar el Media con optimizaciones
             val media = Media(libVLC, Uri.parse(canal.url))
-            media.setHWDecoderEnabled(true, false)
-            // Forzar salida de audio a android_audiotrack
-            media.addOption(":aout=android_audiotrack")
+            media.setHWDecoderEnabled(true, false) // Habilitar decodificación por hardware
+            media.addOption(":aout=android_audiotrack") // Forzar salida de audio específica
+            
+            // Configurar el reproductor
             vlcPlayer?.media = media
-            // Asegurar volumen
-            vlcPlayer?.volume = 100
+            vlcPlayer?.volume = 100 // Asegurar volumen máximo
+            
+            // Programar timeout para mostrar error si no carga
             handler.removeCallbacks(splashTimeoutRunnable)
-            handler.postDelayed(splashTimeoutRunnable, 10000)
+            handler.postDelayed(splashTimeoutRunnable, 10000) // 10 segundos de timeout
 
             // Listener para eventos de VLC
             vlcPlayer?.setEventListener { event ->
                 runOnUiThread {
                     when (event.type) {
-                        0x100 -> { // Playing
+                        0x100 -> { // Playing - Reproducción iniciada
                             handler.removeCallbacks(splashTimeoutRunnable)
                             binding.loadingAnimation.visibility = View.GONE
                             binding.playerView.visibility = View.VISIBLE
                             isPlaying = true
                             binding.playPauseButton.setImageResource(android.R.drawable.ic_media_pause)
+                            
                             // Seleccionar automáticamente la primera pista de audio disponible
                             vlcPlayer?.let { player ->
                                 val audioTracks = player.audioTracks
@@ -314,37 +359,43 @@ class PlayerActivity : AppCompatActivity() {
                                     player.setAudioTrack(firstTrackId)
                                 }
                             }
+                            
                             // Iniciar actualización de barra de progreso
                             handler.removeCallbacks(updateProgressRunnable)
                             handler.post(updateProgressRunnable)
                         }
-                        0x10C -> { // VIDEO_OUTPUT (268)
+                        0x10C -> { // VIDEO_OUTPUT (268) - Video disponible
                             handler.removeCallbacks(splashTimeoutRunnable)
                             binding.loadingAnimation.visibility = View.GONE
                             binding.playerView.visibility = View.VISIBLE
+                            
                             // Iniciar actualización de barra de progreso
                             handler.removeCallbacks(updateProgressRunnable)
                             handler.post(updateProgressRunnable)
                         }
-                        0x103 -> { // Buffering
+                        0x103 -> { // Buffering - Cargando contenido
                             binding.loadingAnimation.visibility = View.VISIBLE
                             binding.playerView.visibility = View.VISIBLE
                         }
-                        0x102 -> { // EndReached
+                        0x102 -> { // EndReached - Fin del contenido
                             handler.removeCallbacks(splashTimeoutRunnable)
                             binding.loadingAnimation.visibility = View.GONE
+                            
                             // Detener actualización de barra de progreso
                             handler.removeCallbacks(updateProgressRunnable)
                         }
-                        0x101 -> { // Error
+                        0x101 -> { // Error - Error de reproducción
                             handler.removeCallbacks(splashTimeoutRunnable)
                             binding.loadingAnimation.visibility = View.GONE
+                            
+                            // Mostrar diálogo de error
                             AlertDialog.Builder(this)
                                 .setTitle("Error de Reproducción (VLC)")
                                 .setMessage("No se pudo reproducir el canal con VLC.")
                                 .setPositiveButton("Cerrar") { _, _ -> finish() }
                                 .setCancelable(false)
                                 .show()
+                            
                             // Detener actualización de barra de progreso
                             handler.removeCallbacks(updateProgressRunnable)
                         }
@@ -352,8 +403,9 @@ class PlayerActivity : AppCompatActivity() {
                 }
             }
 
-            // Reproducir
+            // Iniciar reproducción
             vlcPlayer?.play()
+            
             // Seleccionar automáticamente la primera pista de audio disponible
             vlcPlayer?.let { player ->
                 val audioTracks = player.audioTracks
@@ -362,12 +414,16 @@ class PlayerActivity : AppCompatActivity() {
                     player.setAudioTrack(firstTrackId)
                 }
             }
+            
+            // Actualizar estado de reproducción
             isPlaying = true
             binding.playPauseButton.setImageResource(android.R.drawable.ic_media_pause)
+            
             // Iniciar actualización de barra de progreso
             handler.removeCallbacks(updateProgressRunnable)
             handler.post(updateProgressRunnable)
         } catch (e: Exception) {
+            // Manejar errores de inicialización
             handler.removeCallbacks(splashTimeoutRunnable)
             binding.loadingAnimation.visibility = View.GONE
             if (!isFinishing) {
@@ -401,19 +457,24 @@ class PlayerActivity : AppCompatActivity() {
 
     /**
      * Método llamado cuando la actividad se destruye.
-     * Libera los recursos del reproductor.
+     * Libera los recursos del reproductor para evitar memory leaks.
      */
     override fun onDestroy() {
         super.onDestroy()
+        // Limpiar todos los callbacks programados
         handler.removeCallbacks(hideControlsRunnable)
         handler.removeCallbacks(splashTimeoutRunnable)
         handler.removeCallbacks(updateProgressRunnable)
+        
+        // Liberar recursos del reproductor VLC
         try {
             vlcPlayer?.stop()
             vlcPlayer?.detachViews()
             vlcPlayer?.release()
             libVLC?.release()
         } catch (_: Exception) {}
+        
+        // Limpiar referencias
         vlcPlayer = null
         libVLC = null
     }
@@ -427,7 +488,7 @@ class PlayerActivity : AppCompatActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
-            hideSystemUI()
+            hideSystemUI() // Ocultar barras del sistema para pantalla completa
         }
     }
 
@@ -444,16 +505,22 @@ class PlayerActivity : AppCompatActivity() {
                 or View.SYSTEM_UI_FLAG_FULLSCREEN)
     }
 
+    /**
+     * Actualiza la barra de progreso con el tiempo actual y total.
+     * Se ejecuta cada segundo para mantener la información actualizada.
+     */
     private fun updateProgressBar() {
         vlcPlayer?.let { player ->
             val duration = player.length
             val position = player.time
             if (duration > 0) {
+                // Calcular progreso como porcentaje (0-1000)
                 val progress = ((position.toDouble() / duration) * 1000).toInt()
                 binding.progressSeekBar.progress = progress
                 binding.currentTimeText.text = formatMillis(position)
                 binding.totalTimeText.text = formatMillis(duration)
             } else {
+                // Si no hay duración disponible, resetear la barra
                 binding.progressSeekBar.progress = 0
                 binding.currentTimeText.text = "00:00"
                 binding.totalTimeText.text = "00:00"
@@ -461,6 +528,12 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Formatea milisegundos en formato MM:SS.
+     * 
+     * @param millis Tiempo en milisegundos
+     * @return String formateado como MM:SS
+     */
     private fun formatMillis(millis: Long): String {
         val totalSeconds = millis / 1000
         val minutes = totalSeconds / 60

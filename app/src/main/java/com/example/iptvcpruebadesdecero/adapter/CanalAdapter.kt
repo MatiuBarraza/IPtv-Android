@@ -21,33 +21,50 @@ class CanalAdapter(
     private val onCanalClick: (List<Canal>, Int) -> Unit
 ) : ListAdapter<Canal, CanalAdapter.CanalViewHolder>(CanalDiffCallback()) {
 
+    // Variable para mantener la posición del canal seleccionado
     private var selectedPosition: Int = RecyclerView.NO_POSITION
 
     /**
      * ViewHolder que maneja la vista de cada canal.
+     * Contiene la lógica para mostrar el logo, nombre y manejar la selección del canal.
      */
     inner class CanalViewHolder(private val binding: ItemCanalBinding) : 
         RecyclerView.ViewHolder(binding.root) {
         
         init {
+            // Configurar el listener de clic para el item completo
             itemView.setOnClickListener {
+                // Obtener la posición anterior seleccionada
                 val previousPosition = selectedPosition
+                // Actualizar la posición seleccionada actual
                 selectedPosition = adapterPosition
+                
+                // Actualizar visualmente el item anterior (quitar selección)
                 if (previousPosition >= 0 && previousPosition < itemCount) {
                     itemView.post { notifyItemChanged(previousPosition) }
                 }
+                // Actualizar visualmente el item actual (aplicar selección)
                 if (selectedPosition >= 0 && selectedPosition < itemCount) {
                     itemView.post { notifyItemChanged(selectedPosition) }
                 }
+                
+                // Ejecutar el callback con la lista de canales y la posición
                 onCanalClick(currentList, adapterPosition)
             }
+            
+            // Configurar el listener de cambio de foco para navegación con teclado/control remoto
             itemView.setOnFocusChangeListener { _, hasFocus ->
                 if (hasFocus) {
+                    // Obtener la posición anterior seleccionada
                     val previousPosition = selectedPosition
+                    // Actualizar la posición seleccionada actual
                     selectedPosition = adapterPosition
+                    
+                    // Actualizar visualmente el item anterior (quitar selección)
                     if (previousPosition >= 0 && previousPosition < itemCount) {
                         itemView.post { notifyItemChanged(previousPosition) }
                     }
+                    // Actualizar visualmente el item actual (aplicar selección)
                     if (selectedPosition >= 0 && selectedPosition < itemCount) {
                         itemView.post { notifyItemChanged(selectedPosition) }
                     }
@@ -57,14 +74,17 @@ class CanalAdapter(
 
         /**
          * Vincula los datos del canal con las vistas del ViewHolder.
+         * Configura el nombre del canal, carga el logo y aplica el estilo de selección.
+         * 
          * @param canal El canal a mostrar
          */
         fun bind(canal: Canal) {
-            // Establece el nombre del canal
+            // Establecer el nombre del canal en el TextView
             binding.tvCanalNombre.text = canal.nombre
-            // Carga el logo del canal usando Glide
+            
+            // Cargar el logo del canal usando diferentes estrategias
             if (canal.logo != null && canal.logo.startsWith("asset:///")) {
-                // Cargar desde assets
+                // Estrategia 1: Cargar desde assets locales (archivos en la carpeta assets)
                 val assetPath = canal.logo.removePrefix("asset:///")
                 try {
                     val assetManager = itemView.context.assets
@@ -73,36 +93,43 @@ class CanalAdapter(
                     binding.ivCanalLogo.setImageDrawable(drawable)
                     inputStream.close()
                 } catch (e: Exception) {
-                    // Si falla, usar placeholder
+                    // Si falla la carga desde assets, usar imagen placeholder
                     binding.ivCanalLogo.setImageResource(R.drawable.placeholder_channel)
                 }
             } else {
+                // Estrategia 2: Cargar desde URL remota usando Glide
                 Glide.with(itemView.context)
                     .load(canal.logo)
-                    .placeholder(R.drawable.placeholder_channel)
-                    .error(R.drawable.placeholder_channel)
-                    .timeout(3000) // Reducir a 3 segundos
-                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
-                    .skipMemoryCache(false)
-                    .override(120, 120) // Limitar tamaño para optimizar
+                    .placeholder(R.drawable.placeholder_channel) // Imagen mientras carga
+                    .error(R.drawable.placeholder_channel) // Imagen si falla la carga
+                    .timeout(3000) // Timeout de 3 segundos para evitar bloqueos
+                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL) // Cache en disco
+                    .skipMemoryCache(false) // Usar cache en memoria
+                    .override(120, 120) // Limitar tamaño para optimizar rendimiento
                     .into(binding.ivCanalLogo)
             }
-            // Fondo dinámico
+            
+            // Aplicar estilo visual según si el canal está seleccionado o no
             if (adapterPosition == selectedPosition) {
-                binding.root.setCardBackgroundColor(0xFFB0B0B0.toInt()) // Gris
+                // Canal seleccionado: fondo gris
+                binding.root.setCardBackgroundColor(0xFFB0B0B0.toInt())
             } else {
-                binding.root.setCardBackgroundColor(0xFFFFFFFF.toInt()) // Blanco
+                // Canal no seleccionado: fondo blanco
+                binding.root.setCardBackgroundColor(0xFFFFFFFF.toInt())
             }
         }
     }
 
     /**
      * Crea nuevas instancias de ViewHolder.
-     * @param parent El ViewGroup padre
-     * @param viewType El tipo de vista
+     * Se llama automáticamente por el RecyclerView cuando necesita crear nuevos ViewHolders.
+     * 
+     * @param parent El ViewGroup padre donde se inflará la vista
+     * @param viewType El tipo de vista (no usado en este adaptador)
      * @return Una nueva instancia de CanalViewHolder
      */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CanalViewHolder {
+        // Inflar el layout del item usando ViewBinding
         val binding = ItemCanalBinding.inflate(
             LayoutInflater.from(parent.context),
             parent,
@@ -113,6 +140,8 @@ class CanalAdapter(
 
     /**
      * Vincula los datos del canal con el ViewHolder en la posición especificada.
+     * Se llama automáticamente por el RecyclerView para mostrar los datos.
+     * 
      * @param holder El ViewHolder a vincular
      * @param position La posición del elemento en la lista
      */
@@ -120,7 +149,14 @@ class CanalAdapter(
         holder.bind(getItem(position))
     }
 
+    /**
+     * Método para actualizar la lista de canales.
+     * Resetea la posición seleccionada cuando se actualiza la lista.
+     * 
+     * @param list Nueva lista de canales
+     */
     override fun submitList(list: List<Canal>?) {
+        // Resetear la posición seleccionada cuando se actualiza la lista
         selectedPosition = RecyclerView.NO_POSITION
         super.submitList(list)
     }
@@ -128,13 +164,30 @@ class CanalAdapter(
 
 /**
  * DiffUtil.ItemCallback para optimizar las actualizaciones del RecyclerView.
- * Compara canales para determinar si deben ser redibujados.
+ * Compara canales para determinar si deben ser redibujados, evitando actualizaciones innecesarias.
  */
 class CanalDiffCallback : DiffUtil.ItemCallback<Canal>() {
+    
+    /**
+     * Determina si dos items representan el mismo canal.
+     * Se basa en el ID del canal para la comparación.
+     * 
+     * @param oldItem El canal anterior
+     * @param newItem El canal nuevo
+     * @return true si representan el mismo canal
+     */
     override fun areItemsTheSame(oldItem: Canal, newItem: Canal): Boolean {
         return oldItem.id == newItem.id
     }
 
+    /**
+     * Determina si el contenido de dos canales es el mismo.
+     * Se compara toda la información del canal.
+     * 
+     * @param oldItem El canal anterior
+     * @param newItem El canal nuevo
+     * @return true si el contenido es el mismo
+     */
     override fun areContentsTheSame(oldItem: Canal, newItem: Canal): Boolean {
         return oldItem == newItem
     }
