@@ -86,6 +86,11 @@ class LoginActivity : AppCompatActivity() {
             // Limpiar cualquier error previo en los campos de texto
             binding.textInputLayoutUsername.error = null
             binding.textInputLayoutPassword.error = null
+            
+            // Configurar foco para el botón de configuración
+            binding.buttonConfig.isFocusable = true
+            binding.buttonConfig.isFocusableInTouchMode = true
+            
             Log.d(TAG, "Vistas configuradas correctamente")
         } catch (e: Exception) {
             Log.e(TAG, "Error en setupViews: ${e.message}", e)
@@ -147,6 +152,36 @@ class LoginActivity : AppCompatActivity() {
             Log.d(TAG, "Listeners configurados correctamente")
         } catch (e: Exception) {
             Log.e(TAG, "Error en setupListeners: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Maneja los eventos de teclado para navegación con control remoto.
+     * Permite usar las teclas de dirección para navegar y ENTER para seleccionar.
+     */
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        return when (keyCode) {
+            android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+            android.view.KeyEvent.KEYCODE_ENTER -> {
+                // Obtener el botón actualmente enfocado
+                val focusedView = currentFocus
+                when (focusedView) {
+                    binding.buttonConfig -> {
+                        showServerMenu()
+                        true
+                    }
+                    binding.buttonLogin -> {
+                        performLogin()
+                        true
+                    }
+                    binding.buttonExit -> {
+                        finish()
+                        true
+                    }
+                    else -> super.onKeyDown(keyCode, event)
+                }
+            }
+            else -> super.onKeyDown(keyCode, event)
         }
     }
 
