@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.example.iptvcpruebadesdecero.adapter.CategoriaAdapter
+import com.example.iptvcpruebadesdecero.adapter.CanalAdapter
 import com.example.iptvcpruebadesdecero.databinding.ActivityMainBinding
 import com.example.iptvcpruebadesdecero.model.Canal
 import com.example.iptvcpruebadesdecero.model.Categoria
@@ -97,6 +98,11 @@ class MainActivity : AppCompatActivity() {
                 layoutManager = LinearLayoutManager(this@MainActivity)
                 // Asignar el adaptador
                 adapter = categoriaAdapter
+                // Configurar para recibir foco y manejar navegación con teclado/control remoto
+                isFocusable = true
+                isFocusableInTouchMode = true
+                // Configurar para manejar navegación con teclado
+                descendantFocusability = android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS
             }
         } catch (e: Exception) {
             Log.e("MainActivity", "Error en setupRecyclerView: ${e.message}", e)
@@ -243,6 +249,35 @@ class MainActivity : AppCompatActivity() {
             binding.textViewMensaje.visibility = View.VISIBLE
             binding.textViewMensaje.text = "Error al cargar la playlist: ${e.message}"
             binding.progressBar.visibility = View.GONE
+        }
+    }
+
+    /**
+     * Maneja los eventos de teclado para navegación con control remoto.
+     * Permite usar las teclas de dirección para navegar y ENTER para seleccionar.
+     */
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        return when (keyCode) {
+            android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+            android.view.KeyEvent.KEYCODE_ENTER -> {
+                // El manejo del botón central ahora se hace directamente en el CanalAdapter
+                // Solo manejamos aquí si no hay ningún item enfocado
+                val focusedChild = binding.recyclerViewCategorias.findFocus()
+                if (focusedChild == null) {
+                    // Si no hay foco en ningún canal, intentar enfocar el primer canal
+                    val firstViewHolder = binding.recyclerViewCategorias.findViewHolderForAdapterPosition(0)
+                    if (firstViewHolder is CategoriaAdapter.CategoriaViewHolder) {
+                        val canalRecyclerView = firstViewHolder.itemView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recyclerViewCanales)
+                        val firstCanalViewHolder = canalRecyclerView?.findViewHolderForAdapterPosition(0)
+                        if (firstCanalViewHolder is CanalAdapter.CanalViewHolder) {
+                            firstCanalViewHolder.itemView.requestFocus()
+                            return true
+                        }
+                    }
+                }
+                super.onKeyDown(keyCode, event)
+            }
+            else -> super.onKeyDown(keyCode, event)
         }
     }
 }

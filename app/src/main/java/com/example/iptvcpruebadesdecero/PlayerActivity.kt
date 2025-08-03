@@ -119,6 +119,9 @@ class PlayerActivity : AppCompatActivity() {
      * Incluye botones de navegación, reproducción y barra de progreso.
      */
     private fun setupControls() {
+        // Configurar foco para todos los botones de control
+        setupButtonFocus()
+        
         // Botón de volver - cierra la actividad
         binding.backButton.setOnClickListener {
             finish()
@@ -201,6 +204,108 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     /**
+     * Configura el foco para todos los botones de control del reproductor.
+     * Permite la navegación con teclado/control remoto.
+     */
+    private fun setupButtonFocus() {
+        // Configurar foco para todos los botones de control
+        val controlButtons = listOf(
+            binding.backButton,
+            binding.previousButton,
+            binding.rewindButton,
+            binding.playPauseButton,
+            binding.forwardButton,
+            binding.nextButton
+        )
+        
+        controlButtons.forEach { button ->
+            button.isFocusable = true
+            button.isFocusableInTouchMode = true
+            
+            // Agregar listener para reiniciar timer cuando se enfoca un botón
+            button.setOnFocusChangeListener { _, hasFocus ->
+                if (hasFocus) {
+                    resetControlsTimer() // Reiniciar timer cuando se enfoca un botón
+                }
+            }
+        }
+    }
+
+    /**
+     * Maneja los eventos de teclado para navegación con control remoto.
+     * Permite usar las teclas de dirección para navegar y ENTER para seleccionar.
+     */
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        return when (keyCode) {
+            android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+            android.view.KeyEvent.KEYCODE_ENTER -> {
+                // Obtener el botón actualmente enfocado
+                val focusedView = currentFocus
+                when (focusedView) {
+                    binding.backButton -> {
+                        finish()
+                        true
+                    }
+                    binding.previousButton -> {
+                        if (currentPosition > 0) {
+                            currentPosition--
+                            loadChannel(currentPosition)
+                        }
+                        resetControlsTimer()
+                        true
+                    }
+                    binding.nextButton -> {
+                        if (currentPosition < canales.size - 1) {
+                            currentPosition++
+                            loadChannel(currentPosition)
+                        }
+                        resetControlsTimer()
+                        true
+                    }
+                    binding.playPauseButton -> {
+                        if (isPlaying) {
+                            vlcPlayer?.pause()
+                            binding.playPauseButton.setImageResource(android.R.drawable.ic_media_play)
+                        } else {
+                            vlcPlayer?.play()
+                            binding.playPauseButton.setImageResource(android.R.drawable.ic_media_pause)
+                        }
+                        isPlaying = !isPlaying
+                        resetControlsTimer()
+                        true
+                    }
+                    binding.forwardButton -> {
+                        vlcPlayer?.let { player ->
+                            val currentTime = player.time
+                            player.time = currentTime + 5000
+                        }
+                        resetControlsTimer()
+                        true
+                    }
+                    binding.rewindButton -> {
+                        vlcPlayer?.let { player ->
+                            val currentTime = player.time
+                            player.time = maxOf(0, currentTime - 5000)
+                        }
+                        resetControlsTimer()
+                        true
+                    }
+                    else -> super.onKeyDown(keyCode, event)
+                }
+            }
+            android.view.KeyEvent.KEYCODE_DPAD_UP,
+            android.view.KeyEvent.KEYCODE_DPAD_DOWN,
+            android.view.KeyEvent.KEYCODE_DPAD_LEFT,
+            android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                // Reiniciar timer cuando se navega con las teclas de dirección
+                resetControlsTimer()
+                super.onKeyDown(keyCode, event)
+            }
+            else -> super.onKeyDown(keyCode, event)
+        }
+    }
+
+    /**
      * Configura el listener de toques para mostrar/ocultar controles.
      * Permite controlar la visibilidad de la interfaz con toques en la pantalla.
      */
@@ -246,11 +351,11 @@ class PlayerActivity : AppCompatActivity() {
 
     /**
      * Reinicia el timer para ocultar controles automáticamente.
-     * Los controles se ocultan después de 3 segundos de inactividad.
+     * Los controles se ocultan después de 5 segundos de inactividad.
      */
     private fun resetControlsTimer() {
         handler.removeCallbacks(hideControlsRunnable)
-        handler.postDelayed(hideControlsRunnable, 3000) // Ocultar después de 3 segundos
+        handler.postDelayed(hideControlsRunnable, 5000) // Ocultar después de 5 segundos
     }
 
     /**

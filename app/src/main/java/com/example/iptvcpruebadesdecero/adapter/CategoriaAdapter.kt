@@ -47,6 +47,11 @@ class CategoriaAdapter(
                 layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
                 // Asignar el adaptador de canales
                 adapter = canalAdapter
+                // Configurar para recibir foco y manejar navegación con teclado/control remoto
+                isFocusable = true
+                isFocusableInTouchMode = true
+                // Configurar para manejar navegación con teclado
+                descendantFocusability = android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS
             }
         }
 
@@ -103,4 +108,12 @@ class CategoriaAdapter(
      * @return El tamaño de la lista de categorías
      */
     override fun getItemCount() = categorias.size
+
+    /**
+     * Obtiene la lista actual de categorías.
+     * Útil para acceder a los datos desde fuera del adaptador.
+     * 
+     * @return La lista actual de categorías
+     */
+    fun getCategorias(): List<Categoria> = categorias
 } 

@@ -112,9 +112,11 @@
             android:id="@+id/previousButton"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@drawable/button_background_with_border"
+            android:background="@drawable/button_control_bg_selector"
             android:src="@android:drawable/ic_media_previous"
             android:contentDescription="Canal anterior"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
             app:tint="@android:color/white" />
 
         <Space android:layout_width="8dp" android:layout_height="1dp" />
@@ -123,9 +125,11 @@
             android:id="@+id/rewindButton"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@drawable/button_background_with_border"
+            android:background="@drawable/button_control_bg_selector"
             android:src="@android:drawable/ic_media_rew"
             android:contentDescription="Retroceder 5s"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
             app:tint="@android:color/white" />
 
         <Space android:layout_width="8dp" android:layout_height="1dp" />
@@ -134,9 +138,11 @@
             android:id="@+id/playPauseButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="@drawable/button_background_with_border"
+            android:background="@drawable/button_control_bg_selector"
             android:src="@android:drawable/ic_media_pause"
             android:contentDescription="Pausar/Reproducir"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
             app:tint="@android:color/white" />
 
         <Space android:layout_width="8dp" android:layout_height="1dp" />
@@ -145,9 +151,11 @@
             android:id="@+id/forwardButton"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@drawable/button_background_with_border"
+            android:background="@drawable/button_control_bg_selector"
             android:src="@android:drawable/ic_media_ff"
             android:contentDescription="Adelantar 5s"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
             app:tint="@android:color/white" />
 
         <Space android:layout_width="8dp" android:layout_height="1dp" />
@@ -156,9 +164,11 @@
             android:id="@+id/nextButton"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@drawable/button_background_with_border"
+            android:background="@drawable/button_control_bg_selector"
             android:src="@android:drawable/ic_media_next"
             android:contentDescription="Siguiente canal"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
             app:tint="@android:color/white" />
     </LinearLayout>
 

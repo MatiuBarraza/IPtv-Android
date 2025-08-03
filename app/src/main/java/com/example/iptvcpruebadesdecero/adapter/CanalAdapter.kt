@@ -70,6 +70,23 @@ class CanalAdapter(
                     }
                 }
             }
+            
+            // Configurar el listener de teclado para manejar el botón central del control remoto
+            itemView.setOnKeyListener { _, keyCode, event ->
+                if (event.action == android.view.KeyEvent.ACTION_DOWN) {
+                    when (keyCode) {
+                        android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                        android.view.KeyEvent.KEYCODE_ENTER -> {
+                            // Ejecutar el clic en el canal seleccionado
+                            onCanalClick(currentList, adapterPosition)
+                            true
+                        }
+                        else -> false
+                    }
+                } else {
+                    false
+                }
+            }
         }
 
         /**
