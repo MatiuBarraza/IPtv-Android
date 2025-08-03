@@ -62,6 +62,9 @@ dependencies {
     implementation("androidx.tv:tv-foundation:1.0.0-alpha10")
     implementation("androidx.tv:tv-material:1.0.0-alpha10")
 
+    // Seguridad - Encriptación de SharedPreferences
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

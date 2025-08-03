@@ -450,4 +450,43 @@ class LoginActivity : AppCompatActivity() {
         }
         binding.buttonConfig.setImageResource(iconRes)
     }
+
+    /**
+     * Método llamado cuando cambia la configuración del dispositivo.
+     * Se ejecuta en lugar de recrear la actividad cuando configChanges está configurado.
+     * Esto permite que el layout se adapte correctamente a la nueva orientación.
+     */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        Log.d(TAG, "Configuración cambiada - orientación: ${newConfig.orientation}")
+        
+        // Forzar la recreación del layout para asegurar que se aplique el layout correcto
+        try {
+            // Guardar el estado actual de los campos
+            val currentUsername = binding.editTextUsername.text.toString()
+            val currentPassword = binding.editTextPassword.text.toString()
+            
+            // Reinicializar ViewBinding con el nuevo layout
+            binding = ActivityLoginBinding.inflate(layoutInflater)
+            setContentView(binding.root)
+            
+            // Reconfigurar las vistas después del cambio de orientación
+            setupViews()
+            setupListeners()
+            
+            // Restaurar el estado de los campos
+            binding.editTextUsername.setText(currentUsername)
+            binding.editTextPassword.setText(currentPassword)
+            
+            // Recargar configuraciones
+            cargarServidorGuardado()
+            
+            // Actualizar el estado del botón
+            updateLoginButtonState()
+            
+            Log.d(TAG, "Layout recreado correctamente para nueva orientación")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al recrear layout: ${e.message}", e)
+        }
+    }
 } 

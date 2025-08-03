@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -12,63 +12,80 @@
         android:id="@+id/buttonConfig"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
-        android:src="@android:drawable/ic_menu_manage"
         android:background="@drawable/button_config_selector"
         android:contentDescription="Configuración"
-        android:scaleType="centerInside"
+        android:elevation="4dp"
         android:padding="12dp"
-        android:elevation="4dp" />
+        android:scaleType="centerInside"
+        android:src="@android:drawable/ic_menu_manage"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- ScrollView para permitir scroll en pantallas pequeñas -->
     <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:fillViewport="true"
-        android:layout_below="@id/buttonConfig">
+        android:layout_marginTop="16dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/buttonConfig">
 
-        <LinearLayout
+        <!-- Contenedor principal para orientación vertical -->
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="24dp"
-            android:gravity="center">
+            android:padding="24dp">
 
-            <!-- Solo logo centrado -->
+            <!-- Logo centrado arriba -->
             <ImageView
                 android:id="@+id/imageLogo"
-                android:layout_width="100dp"
-                android:layout_height="100dp"
-                android:src="@drawable/logo_empresa"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:layout_marginTop="32dp"
                 android:contentDescription="Logo de la empresa"
-                android:layout_marginTop="48dp"
-                android:layout_marginBottom="32dp"
-                android:layout_gravity="center" />
+                android:src="@drawable/logo_empresa"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                android:scaleType="fitCenter" />
 
-            <!-- Título y subtítulo -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                android:text="Bienvenido a CTVC.CL"
-                android:textSize="24sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/black"
-                android:layout_marginBottom="24dp" />
-
-            <!-- Formulario de login -->
-            <LinearLayout
-                android:layout_width="match_parent"
+            <!-- Título de bienvenida -->
+            <TextView
+                android:id="@+id/titleText"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:gravity="center"
+                android:text="Bienvenido a CTVC"
+                android:textColor="@color/black"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/imageLogo" />
+
+            <!-- Contenedor del formulario de login -->
+            <LinearLayout
+                android:id="@+id/loginContainer"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:gravity="center"
                 android:orientation="vertical"
-                android:layout_marginBottom="32dp"
-                android:gravity="center">
+                android:padding="16dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/titleText"
+                app:layout_constraintWidth_percent="0.9">
 
                 <!-- Campo de usuario -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/textInputLayoutUsername"
-                    android:layout_width="280dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
                     android:hint="Usuario"
@@ -90,7 +107,7 @@
                 <!-- Campo de contraseña -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/textInputLayoutPassword"
-                    android:layout_width="280dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="24dp"
                     android:hint="Contraseña"
@@ -116,44 +133,45 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
-                    android:visibility="gone"
-                    android:layout_marginBottom="16dp" />
+                    android:layout_marginBottom="16dp"
+                    android:visibility="gone" />
 
                 <!-- Botón de login -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonLogin"
                     android:layout_width="wrap_content"
                     android:layout_height="48dp"
-                    android:text="Iniciar Sesión"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/white"
-                    app:cornerRadius="24dp"
-                    android:backgroundTint="@color/black"
-                    android:layout_marginBottom="12dp"
                     android:layout_gravity="center"
+                    android:layout_marginBottom="12dp"
+                    android:backgroundTint="@color/black"
                     android:paddingStart="32dp"
                     android:paddingEnd="32dp"
+                    android:text="Iniciar Sesión"
+                    android:textColor="@color/white"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="24dp"
                     style="@style/Widget.MaterialComponents.Button" />
 
                 <!-- Botón de salir -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonExit"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
-                    android:text="Salir"
-                    android:textSize="14sp"
-                    android:textColor="@color/black"
-                    app:cornerRadius="20dp"
                     android:layout_gravity="center"
                     android:paddingStart="28dp"
                     android:paddingEnd="28dp"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                    android:text="Salir"
+                    android:textColor="@color/white"
+                    android:textSize="14sp"
+                    app:backgroundTint="@color/surface_dark"
+                    app:cornerRadius="20dp" />
 
             </LinearLayout>
 
-        </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
     </ScrollView>
 
-</RelativeLayout> 
+</androidx.constraintlayout.widget.ConstraintLayout> 

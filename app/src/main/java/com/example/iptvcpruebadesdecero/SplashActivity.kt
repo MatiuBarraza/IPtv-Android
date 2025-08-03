@@ -17,6 +17,7 @@ import com.airbnb.lottie.LottieAnimationView
  * - Animación de carga con Lottie
  * - Timer automático para navegar al login
  * - Manejo de errores de animación
+ * - Prevención de reinicio en cambios de configuración
  */
 class SplashActivity : AppCompatActivity() {
     // Referencia a la vista de animación Lottie
@@ -26,10 +27,16 @@ class SplashActivity : AppCompatActivity() {
     // Duración del splash en milisegundos (7 segundos)
     private val splashDuration = 7000L
     private val TAG = "SplashActivity"
+    
+    // Variable para controlar si ya se inició la navegación
+    private var isNavigating = false
+    // Runnable para la navegación
+    private val splashTimeoutRunnable = Runnable { startLoginActivity() }
 
     /**
      * Método de inicialización de la actividad.
      * Configura la animación y programa la navegación automática.
+     * Solo se ejecuta una vez, incluso si la actividad se recrea.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +44,11 @@ class SplashActivity : AppCompatActivity() {
 
         // Obtener referencia a la vista de animación
         lottieAnimationView = findViewById(R.id.lottieAnimationView)
-        setupLottieAnimation()
+        
+        // Solo configurar la animación si no se está navegando
+        if (!isNavigating) {
+            setupLottieAnimation()
+        }
     }
 
     /**
@@ -53,9 +64,7 @@ class SplashActivity : AppCompatActivity() {
             lottieAnimationView.playAnimation()
             
             // Programar la navegación automática después del tiempo especificado
-            handler.postDelayed({
-                startLoginActivity()
-            }, splashDuration)
+            handler.postDelayed(splashTimeoutRunnable, splashDuration)
             
         } catch (e: Exception) {
             Log.e(TAG, "Error al cargar la animación: ${e.message}", e)
@@ -67,9 +76,20 @@ class SplashActivity : AppCompatActivity() {
     /**
      * Inicia la actividad de login y finaliza la actividad actual.
      * Se ejecuta automáticamente después del tiempo del splash o si hay error.
+     * Previene múltiples navegaciones.
      */
     private fun startLoginActivity() {
+        if (isNavigating) {
+            Log.d(TAG, "Navegación ya en progreso, ignorando llamada")
+            return
+        }
+        
+        isNavigating = true
         Log.d(TAG, "Iniciando LoginActivity")
+        
+        // Remover el callback para evitar múltiples navegaciones
+        handler.removeCallbacks(splashTimeoutRunnable)
+        
         startActivity(Intent(this, LoginActivity::class.java))
         finish() // Finalizar la actividad de splash
     }
@@ -81,10 +101,20 @@ class SplashActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         // Remover todos los callbacks programados
-        handler.removeCallbacksAndMessages(null)
+        handler.removeCallbacks(splashTimeoutRunnable)
         // Cancelar la animación si está activa
         if (::lottieAnimationView.isInitialized) {
             lottieAnimationView.cancelAnimation()
         }
+    }
+
+    /**
+     * Método llamado cuando cambia la configuración del dispositivo.
+     * Se ejecuta en lugar de recrear la actividad cuando configChanges está configurado.
+     */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        Log.d(TAG, "Configuración cambiada - orientación: ${newConfig.orientation}")
+        // No necesitamos hacer nada aquí, la actividad no se recrea
     }
 } 
