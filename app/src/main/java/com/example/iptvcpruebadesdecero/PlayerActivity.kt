@@ -236,6 +236,12 @@ class PlayerActivity : AppCompatActivity() {
      * Permite usar las teclas de dirección para navegar y ENTER para seleccionar.
      */
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        // Si los controles están ocultos, mostrarlos con cualquier evento de teclado
+        if (!controlsVisible) {
+            showControls()
+            return true
+        }
+        
         return when (keyCode) {
             android.view.KeyEvent.KEYCODE_DPAD_CENTER,
             android.view.KeyEvent.KEYCODE_ENTER -> {
