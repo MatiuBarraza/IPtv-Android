@@ -78,13 +78,9 @@ class PlayerActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         // Obtener la lista de canales y la posición desde el intent de forma segura
-        // Manejo diferente según la versión de Android para compatibilidad
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            canales = intent.getSerializableExtra("canales", ArrayList::class.java) as? List<Canal> ?: emptyList()
-        } else {
-            @Suppress("DEPRECATION")
-            canales = intent.getSerializableExtra("canales") as? List<Canal> ?: emptyList()
-        }
+        // Compatible con API 29+ (Android 10+)
+        @Suppress("DEPRECATION")
+        canales = intent.getSerializableExtra("canales") as? List<Canal> ?: emptyList()
         currentPosition = intent.getIntExtra("position", -1)
 
         // Validar que se recibieron los datos correctos

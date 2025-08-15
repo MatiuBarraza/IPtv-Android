@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.iptvcpruebadesdecero"
-        minSdk = 24
+        minSdk = 29  // Android 10+ (dispositivos desde 2019) - Máxima compatibilidad
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -19,11 +19,22 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Optimizaciones adicionales para reducir tamaño
+            isDebuggable = false
+            isJniDebuggable = false
+            isRenderscriptDebuggable = false
+            isPseudoLocalesEnabled = false
+            isZipAlignEnabled = true
+        }
+        debug {
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
     compileOptions {
@@ -36,6 +47,32 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    
+    // Optimizaciones para reducir tamaño del APK
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/LICENSE"
+            excludes += "META-INF/LICENSE.txt"
+            excludes += "META-INF/license.txt"
+            excludes += "META-INF/NOTICE"
+            excludes += "META-INF/NOTICE.txt"
+            excludes += "META-INF/notice.txt"
+            excludes += "META-INF/ASL2.0"
+            excludes += "META-INF/*.kotlin_module"
+        }
+    }
+    
+    // Splits por ABI solo para dispositivos reales
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a")  // Solo dispositivos reales
+            isUniversalApk = false
+        }
+    }
 }
 
 dependencies {
@@ -44,28 +81,27 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation(libs.androidx.constraintlayout)
 
-    // VLC para reproducción de video (reemplaza ExoPlayer)
+    // VLC para reproducción de video (versión optimizada)
     implementation("org.videolan.android:libvlc-all:3.5.1")
 
-    // Glide para cargar imágenes
-    implementation("com.github.bumptech.glide:glide:4.16.0")
+    // Glide para cargar imágenes (solo lo necesario)
+    implementation("com.github.bumptech.glide:glide:4.16.0") {
+        exclude(group = "com.android.support")
+    }
 
-    // Coroutines
+    // Coroutines (solo una dependencia)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
-    // ViewModel y LiveData
+    // ViewModel y LiveData (combinado)
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
 
-    // Android TV
+    // Android TV (solo lo necesario)
     implementation("androidx.tv:tv-foundation:1.0.0-alpha10")
-    implementation("androidx.tv:tv-material:1.0.0-alpha10")
 
     // Seguridad - Encriptación de SharedPreferences
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
-    // Testing
+    // Testing (solo en debug)
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
