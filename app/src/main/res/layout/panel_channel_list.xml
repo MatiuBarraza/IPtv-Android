@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/channelListPanel"
+    android:layout_width="400dp"
+    android:layout_height="match_parent"
+    android:background="#E6000000"
+    android:visibility="gone">
+
+    <!-- Título del panel -->
+    <TextView
+        android:id="@+id/tvPanelTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/primary_tv"
+        android:gravity="center"
+        android:padding="16dp"
+        android:text="Canales"
+        android:textColor="@color/white"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Lista de canales -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewChannels"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:padding="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvPanelTitle" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+

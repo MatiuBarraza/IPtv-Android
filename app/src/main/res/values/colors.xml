@@ -11,4 +11,15 @@
     <color name="surface_dark">#1E1E1E</color>
     <color name="primary_dark">#BB86FC</color>
     <color name="secondary_dark">#03DAC6</color>
+    
+    <!-- Colores mejorados para Android TV -->
+    <color name="primary_tv">#FF6200EE</color>
+    <color name="primary_light_tv">#FF9C27B0</color>
+    <color name="accent_tv">#FF03DAC5</color>
+    <color name="focus_highlight">#FFFF6F00</color>
+    <color name="channel_number_bg">#FF6200EE</color>
+    <color name="button_red">#FFFF1744</color>
+    <color name="button_green">#FF00E676</color>
+    <color name="button_yellow">#FFFFD600</color>
+    <color name="button_blue">#FF2196F3</color>
 </resources>

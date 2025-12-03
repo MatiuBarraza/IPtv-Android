@@ -12,11 +12,13 @@ import java.io.Serializable
  * @property url URL del stream del canal (formato HLS, M3U8, etc.)
  * @property logo URL opcional del logo del canal (puede ser null si no hay logo disponible)
  * @property categoria Categoría a la que pertenece el canal (ej: "Deportes", "Películas", "Series")
+ * @property numero Número del canal para acceso rápido (ej: 1, 2, 101, etc.)
  */
 data class Canal(
     val id: String,
     val nombre: String,
     val url: String,
     val logo: String?,
-    val categoria: String
+    val categoria: String,
+    val numero: Int = 0
 ) : Serializable 

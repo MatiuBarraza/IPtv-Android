@@ -43,12 +43,9 @@ class LoginActivity : AppCompatActivity() {
     private val PREFS_NAME = "LoginPrefs"
     private val KEY_USERNAME = "saved_username"
     private val KEY_PASSWORD = "saved_password"
-    private val KEY_SERVER = "selected_server"
     
-    // Configuración de servidores disponibles
+    // Servidor fijo - solo Los Vilos
     private val SERVER_LOS_VILOS = "Los Vilos"
-    private val SERVER_LA_SERENA = "La Serena"
-    private var currentServer = SERVER_LOS_VILOS // Servidor por defecto
     
     /**
      * Método de inicialización de la actividad.
@@ -69,7 +66,6 @@ class LoginActivity : AppCompatActivity() {
         setupViews()
         setupListeners()
         cargarCredencialesGuardadas()
-        cargarServidorGuardado()
         Log.d(TAG, "onCreate completado")
     }
 
@@ -87,9 +83,8 @@ class LoginActivity : AppCompatActivity() {
             binding.textInputLayoutUsername.error = null
             binding.textInputLayoutPassword.error = null
             
-            // Configurar foco para el botón de configuración
-            binding.buttonConfig.isFocusable = true
-            binding.buttonConfig.isFocusableInTouchMode = true
+            // Ocultar botón de configuración ya que solo hay un servidor
+            binding.buttonConfig.visibility = View.GONE
             
             Log.d(TAG, "Vistas configuradas correctamente")
         } catch (e: Exception) {
@@ -113,11 +108,6 @@ class LoginActivity : AppCompatActivity() {
             // Listener para el botón de salir
             binding.buttonExit.setOnClickListener {
                 finish()
-            }
-
-            // Listener para el botón de configuración (selección de servidor)
-            binding.buttonConfig.setOnClickListener {
-                showServerMenu()
             }
 
             // TextWatcher para el campo de usuario - validación en tiempo real
@@ -166,10 +156,6 @@ class LoginActivity : AppCompatActivity() {
                 // Obtener el botón actualmente enfocado
                 val focusedView = currentFocus
                 when (focusedView) {
-                    binding.buttonConfig -> {
-                        showServerMenu()
-                        true
-                    }
                     binding.buttonLogin -> {
                         performLogin()
                         true
@@ -181,51 +167,14 @@ class LoginActivity : AppCompatActivity() {
                     else -> super.onKeyDown(keyCode, event)
                 }
             }
+            android.view.KeyEvent.KEYCODE_BACK -> {
+                finish()
+                true
+            }
             else -> super.onKeyDown(keyCode, event)
         }
     }
 
-    /**
-     * Muestra el menú desplegable para seleccionar el servidor IPTV.
-     * Permite cambiar entre Los Vilos y La Serena.
-     */
-    private fun showServerMenu() {
-        // Crear el menú popup
-        val popupMenu = PopupMenu(this, binding.buttonConfig)
-        popupMenu.menuInflater.inflate(R.menu.server_menu, popupMenu.menu)
-        
-        // Marcar el servidor actual como seleccionado en el menú
-        when (currentServer) {
-            SERVER_LOS_VILOS -> popupMenu.menu.findItem(R.id.menu_server_los_vilos)?.isChecked = true
-            SERVER_LA_SERENA -> popupMenu.menu.findItem(R.id.menu_server_la_serena)?.isChecked = true
-        }
-        
-        // Configurar el listener para cuando se selecciona un servidor
-        popupMenu.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.menu_server_los_vilos -> {
-                    if (currentServer != SERVER_LOS_VILOS) {
-                        currentServer = SERVER_LOS_VILOS
-                        guardarServidorSeleccionado()
-                        Toast.makeText(this, "Servidor seleccionado: Los Vilos", Toast.LENGTH_SHORT).show()
-                    }
-                    true
-                }
-                R.id.menu_server_la_serena -> {
-                    if (currentServer != SERVER_LA_SERENA) {
-                        currentServer = SERVER_LA_SERENA
-                        guardarServidorSeleccionado()
-                        Toast.makeText(this, "Servidor seleccionado: La Serena", Toast.LENGTH_SHORT).show()
-                    }
-                    true
-                }
-                else -> false
-            }
-        }
-        
-        // Mostrar el menú
-        popupMenu.show()
-    }
 
     /**
      * Realiza el proceso de autenticación con el servidor IPTV.
@@ -258,12 +207,8 @@ class LoginActivity : AppCompatActivity() {
         // Ejecutar la autenticación en un hilo secundario
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // Construir URL según el servidor seleccionado
-                val baseUrl = when (currentServer) {
-                    SERVER_LOS_VILOS -> "http://iptv.ctvc.cl:80"
-                    SERVER_LA_SERENA -> "https://tv.wntv.cl:443"
-                    else -> "http://iptv.ctvc.cl:80"
-                }
+                // URL fija para Los Vilos
+                val baseUrl = "http://iptv.ctvc.cl:80"
                 
                 // Construir la URL completa para descargar la playlist
                 val urlString = "$baseUrl/playlist/$username/$password/m3u_plus?output=hls"
@@ -441,50 +386,6 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Guarda el servidor seleccionado en SharedPreferences.
-     */
-    private fun guardarServidorSeleccionado() {
-        try {
-            sharedPreferences.edit().apply {
-                putString(KEY_SERVER, currentServer)
-                apply()
-            }
-            Log.d(TAG, "Servidor guardado: $currentServer")
-            updateServerIndicator()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error al guardar servidor: ${e.message}", e)
-        }
-    }
-
-    /**
-     * Carga el servidor guardado desde SharedPreferences.
-     */
-    private fun cargarServidorGuardado() {
-        try {
-            val savedServer = sharedPreferences.getString(KEY_SERVER, SERVER_LOS_VILOS)
-            currentServer = savedServer ?: SERVER_LOS_VILOS
-            Log.d(TAG, "Servidor cargado: $currentServer")
-            updateServerIndicator()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error al cargar servidor guardado: ${e.message}", e)
-            currentServer = SERVER_LOS_VILOS
-        }
-    }
-
-    /**
-     * Actualiza el indicador visual del servidor seleccionado.
-     * Cambia el icono del botón según el servidor actual.
-     */
-    private fun updateServerIndicator() {
-        // Cambiar el icono del botón según el servidor seleccionado
-        val iconRes = when (currentServer) {
-            SERVER_LOS_VILOS -> android.R.drawable.ic_menu_manage
-            SERVER_LA_SERENA -> android.R.drawable.ic_menu_manage
-            else -> android.R.drawable.ic_menu_manage
-        }
-        binding.buttonConfig.setImageResource(iconRes)
-    }
 
     /**
      * Método llamado cuando cambia la configuración del dispositivo.
@@ -512,9 +413,6 @@ class LoginActivity : AppCompatActivity() {
             // Restaurar el estado de los campos
             binding.editTextUsername.setText(currentUsername)
             binding.editTextPassword.setText(currentPassword)
-            
-            // Recargar configuraciones
-            cargarServidorGuardado()
             
             // Actualizar el estado del botón
             updateLoginButtonState()

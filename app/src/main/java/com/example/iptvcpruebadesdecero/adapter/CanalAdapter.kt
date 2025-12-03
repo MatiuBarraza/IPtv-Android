@@ -34,54 +34,141 @@ class CanalAdapter(
         init {
             // Configurar el listener de clic para el item completo
             itemView.setOnClickListener {
-                // Obtener la posición anterior seleccionada
-                val previousPosition = selectedPosition
-                // Actualizar la posición seleccionada actual
-                selectedPosition = adapterPosition
-                
-                // Actualizar visualmente el item anterior (quitar selección)
-                if (previousPosition >= 0 && previousPosition < itemCount) {
-                    itemView.post { notifyItemChanged(previousPosition) }
-                }
-                // Actualizar visualmente el item actual (aplicar selección)
-                if (selectedPosition >= 0 && selectedPosition < itemCount) {
-                    itemView.post { notifyItemChanged(selectedPosition) }
+                val position = adapterPosition
+                // Validar que la posición sea válida
+                if (position == RecyclerView.NO_POSITION || position < 0 || position >= currentList.size) {
+                    return@setOnClickListener
                 }
                 
-                // Ejecutar el callback con la lista de canales y la posición
-                onCanalClick(currentList, adapterPosition)
-            }
-            
-            // Configurar el listener de cambio de foco para navegación con teclado/control remoto
-            itemView.setOnFocusChangeListener { _, hasFocus ->
-                if (hasFocus) {
+                try {
                     // Obtener la posición anterior seleccionada
                     val previousPosition = selectedPosition
                     // Actualizar la posición seleccionada actual
-                    selectedPosition = adapterPosition
+                    selectedPosition = position
                     
                     // Actualizar visualmente el item anterior (quitar selección)
                     if (previousPosition >= 0 && previousPosition < itemCount) {
-                        itemView.post { notifyItemChanged(previousPosition) }
+                        itemView.post { 
+                            try {
+                                notifyItemChanged(previousPosition)
+                            } catch (e: Exception) {
+                                // Ignorar errores de notificación durante reciclaje rápido
+                            }
+                        }
                     }
                     // Actualizar visualmente el item actual (aplicar selección)
                     if (selectedPosition >= 0 && selectedPosition < itemCount) {
-                        itemView.post { notifyItemChanged(selectedPosition) }
+                        itemView.post { 
+                            try {
+                                notifyItemChanged(selectedPosition)
+                            } catch (e: Exception) {
+                                // Ignorar errores de notificación durante reciclaje rápido
+                            }
+                        }
                     }
+                    
+                    // Ejecutar el callback con la lista de canales y la posición
+                    onCanalClick(currentList, position)
+                } catch (e: Exception) {
+                    // Prevenir crash si hay problemas durante el clic
+                    android.util.Log.e("CanalAdapter", "Error en onClick: ${e.message}", e)
+                }
+            }
+            
+            // Configurar el listener de cambio de foco para navegación con teclado/control remoto
+            itemView.setOnFocusChangeListener { view, hasFocus ->
+                val position = adapterPosition
+                // Validar que la posición sea válida
+                if (position == RecyclerView.NO_POSITION || position < 0 || position >= currentList.size) {
+                    return@setOnFocusChangeListener
+                }
+                
+                try {
+                    if (hasFocus) {
+                        // Obtener la posición anterior seleccionada
+                        val previousPosition = selectedPosition
+                        // Actualizar la posición seleccionada actual
+                        selectedPosition = position
+                        
+                        // Cancelar animaciones anteriores si existen
+                        view.animate().cancel()
+                        
+                        // Movimiento muy leve y suave (sin vibración)
+                        view.animate()
+                            .scaleX(1.02f)
+                            .scaleY(1.02f)
+                            .setDuration(150)
+                            .setInterpolator(android.view.animation.AccelerateDecelerateInterpolator())
+                            .start()
+                        
+                        // Actualizar visualmente solo los items que cambiaron
+                        if (previousPosition >= 0 && previousPosition < itemCount && previousPosition != position) {
+                            try {
+                                notifyItemChanged(previousPosition, "focus")
+                            } catch (e: Exception) {
+                                // Ignorar errores durante reciclaje rápido
+                            }
+                        }
+                        try {
+                            notifyItemChanged(position, "focus")
+                        } catch (e: Exception) {
+                            // Ignorar errores durante reciclaje rápido
+                        }
+                    } else {
+                        // Cancelar animaciones anteriores si existen
+                        view.animate().cancel()
+                        
+                        // Movimiento muy leve de vuelta
+                        view.animate()
+                            .scaleX(1.0f)
+                            .scaleY(1.0f)
+                            .setDuration(150)
+                            .setInterpolator(android.view.animation.AccelerateDecelerateInterpolator())
+                            .start()
+                        
+                        // Si este item ya no tiene foco, actualizar su estado
+                        if (selectedPosition == position) {
+                            selectedPosition = RecyclerView.NO_POSITION
+                            try {
+                                notifyItemChanged(position, "focus")
+                            } catch (e: Exception) {
+                                // Ignorar errores durante reciclaje rápido
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Prevenir crash si hay problemas durante el cambio de foco
+                    android.util.Log.e("CanalAdapter", "Error en onFocusChange: ${e.message}", e)
                 }
             }
             
             // Configurar el listener de teclado para manejar el botón central del control remoto
-            itemView.setOnKeyListener { _, keyCode, event ->
+            itemView.setOnKeyListener { view, keyCode, event ->
                 if (event.action == android.view.KeyEvent.ACTION_DOWN) {
-                    when (keyCode) {
-                        android.view.KeyEvent.KEYCODE_DPAD_CENTER,
-                        android.view.KeyEvent.KEYCODE_ENTER -> {
-                            // Ejecutar el clic en el canal seleccionado
-                            onCanalClick(currentList, adapterPosition)
-                            true
+                    val position = adapterPosition
+                    // Validar que la posición sea válida
+                    if (position == RecyclerView.NO_POSITION || position < 0 || position >= currentList.size) {
+                        return@setOnKeyListener false
+                    }
+                    
+                    try {
+                        when (keyCode) {
+                            android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                            android.view.KeyEvent.KEYCODE_ENTER -> {
+                                // Ejecutar el clic en el canal seleccionado
+                                onCanalClick(currentList, position)
+                                true
+                            }
+                            android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                                // Dejar que el RecyclerView maneje la navegación automáticamente
+                                false
+                            }
+                            else -> false
                         }
-                        else -> false
+                    } catch (e: Exception) {
+                        // Prevenir crash si hay problemas durante el key event
+                        android.util.Log.e("CanalAdapter", "Error en onKey: ${e.message}", e)
+                        false
                     }
                 } else {
                     false
@@ -96,43 +183,80 @@ class CanalAdapter(
          * @param canal El canal a mostrar
          */
         fun bind(canal: Canal) {
-            // Establecer el nombre del canal en el TextView
-            binding.tvCanalNombre.text = canal.nombre
-            
-            // Cargar el logo del canal usando diferentes estrategias
-            if (canal.logo != null && canal.logo.startsWith("asset:///")) {
-                // Estrategia 1: Cargar desde assets locales (archivos en la carpeta assets)
-                val assetPath = canal.logo.removePrefix("asset:///")
-                try {
-                    val assetManager = itemView.context.assets
-                    val inputStream = assetManager.open(assetPath)
-                    val drawable = android.graphics.drawable.Drawable.createFromStream(inputStream, null)
-                    binding.ivCanalLogo.setImageDrawable(drawable)
-                    inputStream.close()
-                } catch (e: Exception) {
-                    // Si falla la carga desde assets, usar imagen placeholder
-                    binding.ivCanalLogo.setImageResource(R.drawable.placeholder_channel)
+            try {
+                val position = adapterPosition
+                // Validar posición antes de usar
+                val isValidPosition = position != RecyclerView.NO_POSITION && position >= 0
+                
+                // Establecer el nombre del canal en el TextView
+                binding.tvCanalNombre.text = canal.nombre
+                
+                // Mostrar número del canal si está disponible
+                if (canal.numero > 0) {
+                    binding.tvCanalNumero.text = canal.numero.toString()
+                    binding.tvCanalNumero.visibility = android.view.View.VISIBLE
+                } else {
+                    binding.tvCanalNumero.visibility = android.view.View.GONE
                 }
-            } else {
-                // Estrategia 2: Cargar desde URL remota usando Glide
-                Glide.with(itemView.context)
-                    .load(canal.logo)
-                    .placeholder(R.drawable.placeholder_channel) // Imagen mientras carga
-                    .error(R.drawable.placeholder_channel) // Imagen si falla la carga
-                    .timeout(3000) // Timeout de 3 segundos para evitar bloqueos
-                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL) // Cache en disco
-                    .skipMemoryCache(false) // Usar cache en memoria
-                    .override(120, 120) // Limitar tamaño para optimizar rendimiento
-                    .into(binding.ivCanalLogo)
+                
+                // Cargar el logo del canal usando diferentes estrategias
+                if (canal.logo != null && canal.logo.startsWith("asset:///")) {
+                    // Estrategia 1: Cargar desde assets locales (archivos en la carpeta assets)
+                    val assetPath = canal.logo.removePrefix("asset:///")
+                    try {
+                        val assetManager = itemView.context.assets
+                        val inputStream = assetManager.open(assetPath)
+                        val drawable = android.graphics.drawable.Drawable.createFromStream(inputStream, null)
+                        binding.ivCanalLogo.setImageDrawable(drawable)
+                        inputStream.close()
+                    } catch (e: Exception) {
+                        // Si falla la carga desde assets, usar imagen placeholder
+                        binding.ivCanalLogo.setImageResource(R.drawable.placeholder_channel)
+                    }
+                } else {
+                    // Estrategia 2: Cargar desde URL remota usando Glide
+                    // Cancelar cualquier carga anterior para evitar conflictos
+                    Glide.with(itemView.context).clear(binding.ivCanalLogo)
+                    Glide.with(itemView.context)
+                        .load(canal.logo)
+                        .placeholder(R.drawable.placeholder_channel) // Imagen mientras carga
+                        .error(R.drawable.placeholder_channel) // Imagen si falla la carga
+                        .timeout(3000) // Timeout de 3 segundos para evitar bloqueos
+                        .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL) // Cache en disco
+                        .skipMemoryCache(false) // Usar cache en memoria
+                        .override(160, 160) // Limitar tamaño para optimizar rendimiento (80dp * 2)
+                        .into(binding.ivCanalLogo)
+                }
+                
+                // Aplicar estilo visual según si el canal está seleccionado o no
+                if (isValidPosition) {
+                    updateFocusState(position == selectedPosition)
+                } else {
+                    // Si la posición no es válida, usar estado por defecto
+                    updateFocusState(false)
+                }
+            } catch (e: Exception) {
+                // Prevenir crash si hay problemas durante el bind
+                android.util.Log.e("CanalAdapter", "Error en bind: ${e.message}", e)
+                // Aplicar estado por defecto en caso de error
+                updateFocusState(false)
             }
-            
-            // Aplicar estilo visual según si el canal está seleccionado o no
-            if (adapterPosition == selectedPosition) {
-                // Canal seleccionado: fondo gris
-                binding.root.setCardBackgroundColor(0xFFB0B0B0.toInt())
+        }
+        
+        /**
+         * Actualiza solo el estado visual de foco sin re-renderizar todo el item.
+         */
+        fun updateFocusState(isSelected: Boolean) {
+            if (isSelected) {
+                // Canal seleccionado: fondo con color morado (color principal)
+                binding.root.setCardBackgroundColor(itemView.context.resources.getColor(R.color.primary_tv, null))
+                binding.tvCanalNombre.setTextColor(itemView.context.resources.getColor(R.color.white, null))
+                binding.root.cardElevation = 8f
             } else {
-                // Canal no seleccionado: fondo blanco
-                binding.root.setCardBackgroundColor(0xFFFFFFFF.toInt())
+                // Canal no seleccionado: fondo oscuro
+                binding.root.setCardBackgroundColor(itemView.context.resources.getColor(R.color.surface_dark, null))
+                binding.tvCanalNombre.setTextColor(itemView.context.resources.getColor(R.color.white, null))
+                binding.root.cardElevation = 2f
             }
         }
     }
@@ -163,7 +287,32 @@ class CanalAdapter(
      * @param position La posición del elemento en la lista
      */
     override fun onBindViewHolder(holder: CanalViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        try {
+            // Validar que la posición sea válida
+            if (position >= 0 && position < currentList.size) {
+                holder.bind(getItem(position))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("CanalAdapter", "Error en onBindViewHolder: ${e.message}", e)
+        }
+    }
+    
+    override fun onBindViewHolder(holder: CanalViewHolder, position: Int, payloads: MutableList<Any>) {
+        try {
+            // Validar que la posición sea válida
+            if (position < 0 || position >= currentList.size) {
+                return
+            }
+            
+            if (payloads.isNotEmpty() && payloads[0] == "focus") {
+                // Solo actualizar el estado de foco sin re-renderizar todo
+                holder.updateFocusState(position == selectedPosition)
+            } else {
+                super.onBindViewHolder(holder, position, payloads)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("CanalAdapter", "Error en onBindViewHolder con payloads: ${e.message}", e)
+        }
     }
 
     /**
@@ -173,9 +322,20 @@ class CanalAdapter(
      * @param list Nueva lista de canales
      */
     override fun submitList(list: List<Canal>?) {
-        // Resetear la posición seleccionada cuando se actualiza la lista
-        selectedPosition = RecyclerView.NO_POSITION
-        super.submitList(list)
+        try {
+            // Resetear la posición seleccionada cuando se actualiza la lista
+            selectedPosition = RecyclerView.NO_POSITION
+            super.submitList(list)
+        } catch (e: Exception) {
+            android.util.Log.e("CanalAdapter", "Error en submitList: ${e.message}", e)
+            // Intentar actualizar de forma segura
+            try {
+                selectedPosition = RecyclerView.NO_POSITION
+                super.submitList(list)
+            } catch (e2: Exception) {
+                android.util.Log.e("CanalAdapter", "Error crítico en submitList: ${e2.message}", e2)
+            }
+        }
     }
 }
 

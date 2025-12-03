@@ -59,6 +59,7 @@ class M3UParser {
         val categorias = mutableMapOf<String, Categoria>() // Mapa para almacenar categorías únicas
         var currentCanal: Canal? = null // Variable temporal para almacenar el canal que se está procesando
         var lineCount = 0 // Contador de líneas para el manejo de errores
+        var numeroCanal = 1 // Contador para asignar números a los canales
 
         // Cargar información de canales del JSON una sola vez para optimizar búsquedas
         val indices = cargarCanalesInfo(context)
@@ -79,6 +80,10 @@ class M3UParser {
 
                                 Log.d(TAG, "Parseando canal: $nombre, categoría: $categoria")
 
+                                // Usar siempre numeración secuencial ascendente (1, 2, 3, 4...)
+                                // No usar tvg-id para evitar duplicados y desorden
+                                val numero = numeroCanal
+
                                 // Prioridad especial para GOL TV: siempre usar logo local si existe
                                 val logoFinal = if (nombre.equals("GOL TV", ignoreCase = true)) {
                                     buscarLogoLocal(nombre, context) ?: if (logo.isNotEmpty()) logo else buscarLogoLocalPrimero(nombre, indices, context)
@@ -94,8 +99,12 @@ class M3UParser {
                                     nombre = nombre,
                                     url = "", // La URL se agregará en la siguiente línea
                                     logo = logoFinal,
-                                    categoria = categoria
+                                    categoria = categoria,
+                                    numero = numero
                                 )
+                                
+                                // Incrementar contador para el siguiente canal
+                                numeroCanal++
                             }
                             // Línea que contiene la URL del stream del canal
                             !line.startsWith("#") && line.isNotBlank() -> {

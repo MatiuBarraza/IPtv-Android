@@ -6,9 +6,12 @@ import android.text.Editable
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.example.iptvcpruebadesdecero.adapter.CategoriaAdapter
@@ -35,11 +38,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     // ViewModel para manejar la lógica de negocio y persistencia de datos
     private lateinit var viewModel: MainViewModel
-    // Adaptador para mostrar las categorías y sus canales
-    private lateinit var categoriaAdapter: CategoriaAdapter
-    // Almacena la lista completa de categorías para pasarla al reproductor
-    // Esto permite navegar entre todos los canales desde el reproductor
-    private var todasLasCategorias: List<Categoria> = emptyList()
+    // Adaptador para mostrar todos los canales en una sola lista
+    private lateinit var canalAdapter: CanalAdapter
+    // Almacena la lista completa de canales (aplanada de todas las categorías)
+    private var todosLosCanales: List<Canal> = emptyList()
+    // Almacena la lista completa sin filtrar para búsquedas
+    private var canalesCompletos: List<Canal> = emptyList()
 
     /**
      * Método de inicialización de la actividad.
@@ -48,6 +52,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try {
+            // Mantener la pantalla activa (no se bloqueará automáticamente)
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            
             // Inicialización del ViewBinding para acceso seguro a las vistas
             binding = ActivityMainBinding.inflate(layoutInflater)
             setContentView(binding.root)
@@ -56,6 +63,7 @@ class MainActivity : AppCompatActivity() {
             setupViewModel() // Configurar el ViewModel
             setupRecyclerView() // Configurar la lista de categorías
             setupSearch() // Configurar la búsqueda
+            setupLogout() // Configurar botón de cerrar sesión
             setupGlideConfiguration() // Optimizar carga de imágenes
             observeViewModel() // Observar cambios en los datos
             cargarPlaylist() // Cargar la playlist guardada
@@ -63,6 +71,12 @@ class MainActivity : AppCompatActivity() {
             Log.e("MainActivity", "Error en onCreate: ${e.message}", e)
             Toast.makeText(this, "Error al iniciar la aplicación: ${e.message}", Toast.LENGTH_LONG).show()
         }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        // Limpiar el flag cuando se destruye la actividad
+        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     /**
@@ -82,27 +96,33 @@ class MainActivity : AppCompatActivity() {
     /**
      * Configura el RecyclerView y su adaptador.
      * Inicializa el adaptador con una lista vacía y configura el layout manager.
-     * El RecyclerView mostrará las categorías en formato vertical.
+     * El RecyclerView mostrará todos los canales en formato grid.
      */
     private fun setupRecyclerView() {
         try {
             // Creación del adaptador con callback para manejar clics en canales
             // Cuando se hace clic en un canal, se abre el reproductor
-            categoriaAdapter = CategoriaAdapter(emptyList()) { canales, position ->
+            canalAdapter = CanalAdapter { canales, position ->
                 abrirReproductor(canales, position)
             }
 
             // Configuración del RecyclerView principal
             binding.recyclerViewCategorias.apply {
-                // LayoutManager vertical para mostrar categorías en lista
-                layoutManager = LinearLayoutManager(this@MainActivity)
+                // GridLayoutManager para mostrar canales en grid (5 columnas en Android TV)
+                layoutManager = GridLayoutManager(this@MainActivity, 5)
                 // Asignar el adaptador
-                adapter = categoriaAdapter
+                adapter = canalAdapter
                 // Configurar para recibir foco y manejar navegación con teclado/control remoto
                 isFocusable = true
                 isFocusableInTouchMode = true
                 // Configurar para manejar navegación con teclado
                 descendantFocusability = android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS
+                // Deshabilitar animaciones para evitar vibraciones
+                itemAnimator = null
+                // Mejorar rendimiento durante scroll rápido
+                setHasFixedSize(false)
+                // Prevenir problemas de reciclaje durante scroll rápido
+                isNestedScrollingEnabled = false
             }
         } catch (e: Exception) {
             Log.e("MainActivity", "Error en setupRecyclerView: ${e.message}", e)
@@ -110,11 +130,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Variables para cambio de canal con números
+    private var channelNumberInput = StringBuilder()
+    private var channelNumberHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val channelNumberTimeout = 2000L // 2 segundos para ejecutar cambio de canal
+    
     /**
      * Configura la funcionalidad de búsqueda en la actividad.
-     * Permite buscar canales en tiempo real mientras el usuario escribe.
+     * Permite buscar canales usando un ícono de lupa navegable.
      */
     private fun setupSearch() {
+        // Configurar foco y navegación para el botón de búsqueda
+        binding.searchButton.isFocusable = true
+        binding.searchButton.isFocusableInTouchMode = true
+        
+        // Listener para mostrar/ocultar el campo de búsqueda
+        binding.searchButton.setOnClickListener {
+            toggleSearch()
+        }
+        
         // Listener para cuando se presiona el botón de búsqueda en el teclado
         binding.searchEditText.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
@@ -132,9 +166,65 @@ class MainActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
                 // Realizar búsqueda con el texto actual
-                viewModel.buscarCanales(s?.toString() ?: "")
+                val query = s?.toString() ?: ""
+                buscarCanales(query)
             }
         })
+    }
+    
+    /**
+     * Alterna la visibilidad del campo de búsqueda.
+     */
+    private fun toggleSearch() {
+        val isVisible = binding.searchLayout.visibility == View.VISIBLE
+        if (isVisible) {
+            binding.searchLayout.visibility = View.GONE
+            binding.searchEditText.text?.clear()
+            buscarCanales("")
+            // Devolver foco al botón de búsqueda
+            binding.searchButton.requestFocus()
+        } else {
+            binding.searchLayout.visibility = View.VISIBLE
+            // Enfocar el campo de búsqueda después de un pequeño delay para asegurar que esté visible
+            binding.searchEditText.post {
+                binding.searchEditText.requestFocus()
+            }
+        }
+    }
+    
+    /**
+     * Busca canales en la lista completa y actualiza el adaptador.
+     */
+    private fun buscarCanales(query: String) {
+        viewModel.buscarCanales(query)
+        // La búsqueda se maneja en observeViewModel que actualiza el adaptador
+    }
+    
+    /**
+     * Configura el botón de cerrar sesión.
+     */
+    private fun setupLogout() {
+        binding.logoutButton.isFocusable = true
+        binding.logoutButton.isFocusableInTouchMode = true
+        
+        binding.logoutButton.setOnClickListener {
+            performLogout()
+        }
+    }
+    
+    /**
+     * Realiza el cierre de sesión y vuelve a LoginActivity.
+     */
+    private fun performLogout() {
+        // Limpiar credenciales guardadas
+        val prefs = getSharedPreferences("LoginPrefs", android.content.Context.MODE_PRIVATE)
+        prefs.edit().clear().apply()
+        
+        // Navegar a LoginActivity
+        val intent = Intent(this, LoginActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        finish()
     }
 
     /**
@@ -161,25 +251,44 @@ class MainActivity : AppCompatActivity() {
         try {
             // Observador para las categorías - se ejecuta cuando cambian los datos
             viewModel.categorias.observe(this) { categorias ->
-                this.todasLasCategorias = categorias // Guardar la lista completa para el reproductor
                 try {
-                    if (categorias.isEmpty()) {
-                        // Mostrar mensaje si no hay categorías (por ejemplo, después de una búsqueda sin resultados)
+                    // Aplanar todas las categorías en una sola lista de canales
+                    val canalesAplanados = categorias.flatMap { it.canales }
+                    
+                    if (canalesAplanados.isEmpty()) {
+                        // Mostrar mensaje si no hay canales
                         binding.textViewMensaje.visibility = View.VISIBLE
                         binding.textViewMensaje.text = "No se encontraron canales"
                     } else {
-                        // Actualizar el adaptador con las nuevas categorías
-                        binding.textViewMensaje.visibility = View.GONE
-                        categoriaAdapter = CategoriaAdapter(categorias) { canales, position ->
-                            abrirReproductor(canales, position)
+                        // Asegurar numeración correcta en orden ascendente
+                        val canalesConNumeracion = canalesAplanados.mapIndexed { index, canal ->
+                            canal.copy(numero = index + 1)
                         }
-                        binding.recyclerViewCategorias.adapter = categoriaAdapter
+                        
+                        // Guardar la lista completa sin filtrar la primera vez (cuando no hay búsqueda activa)
+                        if (canalesCompletos.isEmpty() || canalesAplanados.size == canalesCompletos.size) {
+                            canalesCompletos = canalesConNumeracion
+                        }
+                        
+                        // Guardar la lista completa para el reproductor (siempre usar la completa)
+                        this.todosLosCanales = canalesCompletos
+                        
+                        // Actualizar el adaptador con los canales (filtrados o completos)
+                        binding.textViewMensaje.visibility = View.GONE
+                        // Usar post para evitar actualizaciones concurrentes durante scroll rápido
+                        binding.recyclerViewCategorias.post {
+                            try {
+                                canalAdapter.submitList(canalesConNumeracion)
+                            } catch (e: Exception) {
+                                Log.e("MainActivity", "Error al actualizar adaptador: ${e.message}", e)
+                            }
+                        }
                     }
                     binding.progressBar.visibility = View.GONE
                 } catch (e: Exception) {
-                    Log.e("MainActivity", "Error al actualizar categorías: ${e.message}", e)
+                    Log.e("MainActivity", "Error al actualizar canales: ${e.message}", e)
                     binding.textViewMensaje.visibility = View.VISIBLE
-                    binding.textViewMensaje.text = "Error al mostrar categorías: ${e.message}"
+                    binding.textViewMensaje.text = "Error al mostrar canales: ${e.message}"
                 }
             }
 
@@ -198,28 +307,35 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Abre la actividad del reproductor con la URL del canal seleccionado.
-     * Crea una lista aplanada con todos los canales para permitir navegación
-     * entre canales desde el reproductor.
+     * Usa la lista completa de canales ya aplanada y numerada.
      * 
-     * @param canalesDeCategoria La lista de canales de la categoría seleccionada
-     * @param positionEnCategoria La posición del canal dentro de su categoría
+     * @param canales La lista de canales (puede ser la lista completa o filtrada)
+     * @param position La posición del canal seleccionado en la lista
      */
-    private fun abrirReproductor(canalesDeCategoria: List<Canal>, positionEnCategoria: Int) {
+    private fun abrirReproductor(canales: List<Canal>, position: Int) {
         try {
-            // 1. Crear una lista aplanada con TODOS los canales de TODAS las categorías
-            // Esto permite navegar entre todos los canales desde el reproductor
-            val todosLosCanales = todasLasCategorias.flatMap { it.canales }
-
-            // 2. Encontrar el canal que fue clickeado para saber su posición en la lista global
-            val canalClickeado = canalesDeCategoria[positionEnCategoria]
-            val posicionGlobal = todosLosCanales.indexOf(canalClickeado)
+            // Validar que la posición sea válida
+            if (position < 0 || position >= canales.size) {
+                Toast.makeText(this, "Canal no válido", Toast.LENGTH_SHORT).show()
+                return
+            }
+            
+            // Validar que tengamos canales completos
+            if (todosLosCanales.isEmpty()) {
+                Toast.makeText(this, "Error: Lista de canales vacía", Toast.LENGTH_SHORT).show()
+                return
+            }
+            
+            // Usar la lista completa de canales con numeración correcta
+            val canalSeleccionado = canales[position]
+            val posicionGlobal = todosLosCanales.indexOfFirst { it.id == canalSeleccionado.id }
 
             if (posicionGlobal == -1) {
                 Toast.makeText(this, "Error al procesar la lista de canales.", Toast.LENGTH_SHORT).show()
                 return
             }
 
-            // 3. Enviar la lista global completa y la posición correcta al reproductor
+            // Enviar la lista global completa con numeración correcta y la posición correcta al reproductor
             val intent = Intent(this, PlayerActivity::class.java).apply {
                 putExtra("canales", ArrayList(todosLosCanales))
                 putExtra("position", posicionGlobal)
@@ -254,30 +370,197 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Maneja los eventos de teclado para navegación con control remoto.
-     * Permite usar las teclas de dirección para navegar y ENTER para seleccionar.
+     * Permite usar las teclas de dirección para navegar, ENTER para seleccionar,
+     * números para cambio de canal, y botones de colores.
      */
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        // Manejar botones de colores
+        when (keyCode) {
+            android.view.KeyEvent.KEYCODE_PROG_RED -> {
+                // Botón rojo - Favoritos
+                showFavorites()
+                return true
+            }
+            android.view.KeyEvent.KEYCODE_PROG_GREEN -> {
+                // Botón verde - EPG
+                showEPG()
+                return true
+            }
+            android.view.KeyEvent.KEYCODE_PROG_YELLOW -> {
+                // Botón amarillo - Idioma/Subtítulos
+                showLanguageSubtitleMenu()
+                return true
+            }
+            android.view.KeyEvent.KEYCODE_PROG_BLUE -> {
+                // Botón azul - Menú contextual
+                showContextMenu()
+                return true
+            }
+        }
+        
+        // Manejar números para cambio de canal
+        if (keyCode >= android.view.KeyEvent.KEYCODE_0 && keyCode <= android.view.KeyEvent.KEYCODE_9) {
+            val digit = keyCode - android.view.KeyEvent.KEYCODE_0
+            handleChannelNumberInput(digit)
+            return true
+        }
+        
+        // Manejar BACK para ocultar búsqueda
+        if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+            if (binding.searchLayout.visibility == View.VISIBLE) {
+                toggleSearch()
+                return true
+            }
+        }
+        
+        // Manejar DPAD_RIGHT para navegación entre canales
+        if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
+            val focusedView = currentFocus
+            
+            // Prevenir que al navegar a la derecha desde el botón de logout se cierre la sesión
+            if (focusedView == binding.logoutButton || focusedView == binding.searchButton) {
+                // Si estamos en los botones superiores, no hacer nada
+                return true
+            }
+            // La navegación en grid se maneja automáticamente por el RecyclerView
+        }
+        
         return when (keyCode) {
             android.view.KeyEvent.KEYCODE_DPAD_CENTER,
             android.view.KeyEvent.KEYCODE_ENTER -> {
-                // El manejo del botón central ahora se hace directamente en el CanalAdapter
-                // Solo manejamos aquí si no hay ningún item enfocado
-                val focusedChild = binding.recyclerViewCategorias.findFocus()
-                if (focusedChild == null) {
-                    // Si no hay foco en ningún canal, intentar enfocar el primer canal
-                    val firstViewHolder = binding.recyclerViewCategorias.findViewHolderForAdapterPosition(0)
-                    if (firstViewHolder is CategoriaAdapter.CategoriaViewHolder) {
-                        val canalRecyclerView = firstViewHolder.itemView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recyclerViewCanales)
-                        val firstCanalViewHolder = canalRecyclerView?.findViewHolderForAdapterPosition(0)
-                        if (firstCanalViewHolder is CanalAdapter.CanalViewHolder) {
-                            firstCanalViewHolder.itemView.requestFocus()
-                            return true
+                // Obtener el botón actualmente enfocado
+                val focusedView = currentFocus
+                when (focusedView) {
+                    binding.searchButton -> {
+                        toggleSearch()
+                        true
+                    }
+                    binding.logoutButton -> {
+                        // Solo cerrar sesión con OK/Enter explícito
+                        performLogout()
+                        true
+                    }
+                        else -> {
+                        // El manejo del botón central ahora se hace directamente en el CanalAdapter
+                        // Solo manejamos aquí si no hay ningún item enfocado
+                        val focusedChild = binding.recyclerViewCategorias.findFocus()
+                        if (focusedChild == null) {
+                            // Si no hay foco en ningún canal, intentar enfocar el primer canal
+                            val firstViewHolder = binding.recyclerViewCategorias.findViewHolderForAdapterPosition(0)
+                            if (firstViewHolder != null) {
+                                firstViewHolder.itemView.requestFocus()
+                                return true
+                            }
                         }
+                        super.onKeyDown(keyCode, event)
                     }
                 }
-                super.onKeyDown(keyCode, event)
             }
             else -> super.onKeyDown(keyCode, event)
         }
+    }
+    
+    /**
+     * Maneja la entrada de números para cambio de canal.
+     * Muestra un overlay con los dígitos ingresados y cambia al canal después de un timeout.
+     */
+    private fun handleChannelNumberInput(digit: Int) {
+        channelNumberInput.append(digit)
+        showChannelNumberOverlay(channelNumberInput.toString())
+        
+        // Cancelar timeout anterior
+        channelNumberHandler.removeCallbacksAndMessages(null)
+        
+        // Programar cambio de canal después del timeout
+        channelNumberHandler.postDelayed({
+            val channelNumber = channelNumberInput.toString().toIntOrNull()
+            if (channelNumber != null) {
+                changeToChannel(channelNumber)
+            }
+            channelNumberInput.clear()
+            hideChannelNumberOverlay()
+        }, channelNumberTimeout)
+    }
+    
+    /**
+     * Muestra un overlay con el número de canal ingresado.
+     */
+    private fun showChannelNumberOverlay(number: String) {
+        // Crear o actualizar un diálogo simple con el número
+        // Por ahora usamos un Toast, pero se puede mejorar con un overlay personalizado
+        Toast.makeText(this, "Canal: $number", Toast.LENGTH_SHORT).show()
+    }
+    
+    /**
+     * Oculta el overlay del número de canal.
+     */
+    private fun hideChannelNumberOverlay() {
+        // Implementación para ocultar el overlay
+    }
+    
+    /**
+     * Cambia al canal con el número especificado.
+     */
+    private fun changeToChannel(channelNumber: Int) {
+        try {
+            // Buscar el canal con el número especificado en la lista completa
+            val canalEncontrado = todosLosCanales.firstOrNull { it.numero == channelNumber }
+            
+            if (canalEncontrado != null) {
+                // Encontrar la posición del canal en la lista
+                val posicion = todosLosCanales.indexOf(canalEncontrado)
+                if (posicion != -1) {
+                    abrirReproductor(todosLosCanales, posicion)
+                } else {
+                    Toast.makeText(this, "Canal $channelNumber no encontrado", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "Canal $channelNumber no encontrado", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error al cambiar de canal: ${e.message}", e)
+            Toast.makeText(this, "Error al cambiar de canal: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    /**
+     * Muestra la lista de favoritos.
+     */
+    private fun showFavorites() {
+        Toast.makeText(this, "Favoritos (próximamente)", Toast.LENGTH_SHORT).show()
+        // TODO: Implementar funcionalidad de favoritos
+    }
+    
+    /**
+     * Muestra la guía de programación electrónica (EPG).
+     */
+    private fun showEPG() {
+        Toast.makeText(this, "EPG (próximamente)", Toast.LENGTH_SHORT).show()
+        // TODO: Implementar funcionalidad de EPG
+    }
+    
+    /**
+     * Muestra el menú de idioma y subtítulos.
+     */
+    private fun showLanguageSubtitleMenu() {
+        Toast.makeText(this, "Idioma/Subtítulos (próximamente)", Toast.LENGTH_SHORT).show()
+        // TODO: Implementar funcionalidad de idioma/subtítulos
+    }
+    
+    /**
+     * Muestra el menú contextual.
+     */
+    private fun showContextMenu() {
+        val options = arrayOf("Información del canal", "Agregar a favoritos", "Configuración")
+        AlertDialog.Builder(this)
+            .setTitle("Menú")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> Toast.makeText(this, "Información del canal", Toast.LENGTH_SHORT).show()
+                    1 -> Toast.makeText(this, "Agregado a favoritos", Toast.LENGTH_SHORT).show()
+                    2 -> Toast.makeText(this, "Configuración", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .show()
     }
 }

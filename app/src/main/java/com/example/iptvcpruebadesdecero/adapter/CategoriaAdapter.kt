@@ -52,6 +52,8 @@ class CategoriaAdapter(
                 isFocusableInTouchMode = true
                 // Configurar para manejar navegación con teclado
                 descendantFocusability = android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS
+                // Deshabilitar animaciones para evitar vibraciones
+                itemAnimator = null
             }
         }
 

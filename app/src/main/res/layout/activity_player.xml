@@ -170,6 +170,20 @@
             android:focusable="true"
             android:focusableInTouchMode="true"
             app:tint="@android:color/white" />
+
+        <Space android:layout_width="16dp" android:layout_height="1dp" />
+
+        <!-- Botón para abrir lista de canales -->
+        <ImageButton
+            android:id="@+id/channelListButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/button_control_bg_selector"
+            android:src="@android:drawable/ic_menu_view"
+            android:contentDescription="Lista de canales"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            app:tint="@android:color/white" />
     </LinearLayout>
 
     <com.airbnb.lottie.LottieAnimationView
@@ -183,5 +197,22 @@
         app:layout_constraintTop_toTopOf="parent"
         app:lottie_autoPlay="true"
         app:lottie_loop="true"/>
+
+    <!-- Overlay para mostrar número de canal ingresado -->
+    <TextView
+        android:id="@+id/channelNumberOverlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/channel_number_overlay_bg"
+        android:padding="24dp"
+        android:text=""
+        android:textColor="@color/white"
+        android:textSize="48sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout> 

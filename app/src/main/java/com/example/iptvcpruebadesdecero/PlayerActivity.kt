@@ -3,6 +3,7 @@ package com.example.iptvcpruebadesdecero
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -14,6 +15,9 @@ import org.videolan.libvlc.MediaPlayer as VLCMediaPlayer
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.view.Gravity
+import android.widget.LinearLayout
+import android.widget.TextView
 
 /**
  * Actividad que maneja la reproducción de streams IPTV.
@@ -45,8 +49,24 @@ class PlayerActivity : AppCompatActivity() {
     private var controlsVisible = false // Visibilidad de controles
     private val handler = Handler(Looper.getMainLooper()) // Handler para tareas programadas
     
+    // Variables para cambio de canal con números
+    private var channelNumberInput = StringBuilder()
+    private val channelNumberTimeout = 2000L // 2 segundos para ejecutar cambio de canal
+    
+    // Variables para lista de canales simple
+    private var channelListDialog: android.app.Dialog? = null
+    private var isChannelListVisible = false
+    private var orderedChannels: List<Canal> = emptyList() // Canales ordenados con numeración correcta
+    private var focusedChannelView: View? = null
+    
     // Runnable para ocultar controles automáticamente
     private val hideControlsRunnable = Runnable { hideControls() }
+    
+    // Runnable para ocultar overlay de número de canal
+    private val hideChannelNumberRunnable = Runnable { 
+        binding.channelNumberOverlay.visibility = View.GONE 
+        channelNumberInput.clear()
+    }
     
     // Runnable para mostrar error si no se puede cargar el canal
     private val splashTimeoutRunnable = Runnable {
@@ -90,6 +110,9 @@ class PlayerActivity : AppCompatActivity() {
             return
         }
 
+        // Asegurar numeración correcta y orden ascendente de canales
+        orderedChannels = ensureChannelNumbering(canales)
+        
         // Configurar la actividad
         setupLoadingAnimation() // Configurar animación de carga
         setupVLCPlayer() // Configurar reproductor VLC
@@ -154,6 +177,16 @@ class PlayerActivity : AppCompatActivity() {
             resetControlsTimer()
         }
 
+        // Botón para abrir lista de canales
+        binding.channelListButton.setOnClickListener {
+            if (isChannelListVisible) {
+                closeChannelList()
+            } else {
+                openChannelList()
+            }
+            resetControlsTimer()
+        }
+
         // Botón de adelantar 5 segundos
         binding.forwardButton.setOnClickListener {
             vlcPlayer?.let { player ->
@@ -211,7 +244,8 @@ class PlayerActivity : AppCompatActivity() {
             binding.rewindButton,
             binding.playPauseButton,
             binding.forwardButton,
-            binding.nextButton
+            binding.nextButton,
+            binding.channelListButton
         )
         
         controlButtons.forEach { button ->
@@ -229,12 +263,108 @@ class PlayerActivity : AppCompatActivity() {
 
     /**
      * Maneja los eventos de teclado para navegación con control remoto.
-     * Permite usar las teclas de dirección para navegar y ENTER para seleccionar.
+     * Permite usar las teclas de dirección para navegar, ENTER para seleccionar,
+     * números para cambio de canal, y botones de colores.
      */
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
         // Si los controles están ocultos, mostrarlos con cualquier evento de teclado
-        if (!controlsVisible) {
+        if (!controlsVisible && keyCode != android.view.KeyEvent.KEYCODE_BACK) {
             showControls()
+            return true
+        }
+        
+        // Manejar botones de colores
+        when (keyCode) {
+            android.view.KeyEvent.KEYCODE_PROG_RED -> {
+                // Botón rojo - Favoritos
+                toggleFavorite()
+                resetControlsTimer()
+                return true
+            }
+            android.view.KeyEvent.KEYCODE_PROG_GREEN -> {
+                // Botón verde - EPG
+                showEPG()
+                resetControlsTimer()
+                return true
+            }
+            android.view.KeyEvent.KEYCODE_PROG_YELLOW -> {
+                // Botón amarillo - Idioma/Subtítulos
+                showLanguageSubtitleMenu()
+                resetControlsTimer()
+                return true
+            }
+            android.view.KeyEvent.KEYCODE_PROG_BLUE -> {
+                // Botón azul - Menú contextual
+                showContextMenu()
+                resetControlsTimer()
+                return true
+            }
+        }
+        
+        // Manejar números para cambio de canal
+        if (keyCode >= android.view.KeyEvent.KEYCODE_0 && keyCode <= android.view.KeyEvent.KEYCODE_9) {
+            val digit = keyCode - android.view.KeyEvent.KEYCODE_0
+            handleChannelNumberInput(digit)
+            resetControlsTimer()
+            return true
+        }
+        
+        // Manejar volumen
+        when (keyCode) {
+            android.view.KeyEvent.KEYCODE_VOLUME_UP,
+            android.view.KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                // Permitir que el sistema maneje el volumen
+                return super.onKeyDown(keyCode, event)
+            }
+        }
+        
+        // Manejar cambio de canal con CHANNEL_UP/DOWN
+        when (keyCode) {
+            android.view.KeyEvent.KEYCODE_CHANNEL_UP -> {
+                if (currentPosition < canales.size - 1) {
+                    currentPosition++
+                    loadChannel(currentPosition)
+                }
+                resetControlsTimer()
+                return true
+            }
+            android.view.KeyEvent.KEYCODE_CHANNEL_DOWN -> {
+                if (currentPosition > 0) {
+                    currentPosition--
+                    loadChannel(currentPosition)
+                }
+                resetControlsTimer()
+                return true
+            }
+        }
+        
+        // Manejar DPAD_LEFT para abrir lista de canales
+        if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
+            if (isChannelListVisible) {
+                // Si la lista está visible, cerrarla
+                closeChannelList()
+                return true
+            } else {
+                // Verificar si el foco está en el primer botón de control
+                val focusedView = currentFocus
+                val isFirstControl = focusedView == binding.previousButton || 
+                                     focusedView == binding.backButton ||
+                                     focusedView == null
+                
+                if (isFirstControl) {
+                    // Si estamos en el primer elemento o no hay foco, abrir lista
+                    openChannelList()
+                    return true
+                }
+                // Permitir navegación normal entre controles
+                return super.onKeyDown(keyCode, event)
+            }
+        }
+        
+        // Si la lista está visible, manejar navegación
+        if (isChannelListVisible && keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
+            // Cerrar lista al presionar derecha
+            closeChannelList()
             return true
         }
         
@@ -260,6 +390,15 @@ class PlayerActivity : AppCompatActivity() {
                         if (currentPosition < canales.size - 1) {
                             currentPosition++
                             loadChannel(currentPosition)
+                        }
+                        resetControlsTimer()
+                        true
+                    }
+                    binding.channelListButton -> {
+                        if (isChannelListVisible) {
+                            closeChannelList()
+                        } else {
+                            openChannelList()
                         }
                         resetControlsTimer()
                         true
@@ -303,8 +442,141 @@ class PlayerActivity : AppCompatActivity() {
                 resetControlsTimer()
                 super.onKeyDown(keyCode, event)
             }
+            android.view.KeyEvent.KEYCODE_BACK -> {
+                // Si el panel está visible, cerrarlo primero
+                if (isChannelListVisible) {
+                    closeChannelList()
+                    return true
+                }
+                // Ocultar controles o salir
+                if (controlsVisible) {
+                    hideControls()
+                    return true
+                }
+                finish()
+                true
+            }
+            android.view.KeyEvent.KEYCODE_HOME -> {
+                // Permitir que el sistema maneje HOME
+                super.onKeyDown(keyCode, event)
+            }
+            android.view.KeyEvent.KEYCODE_MENU -> {
+                // Mostrar menú contextual
+                showContextMenu()
+                resetControlsTimer()
+                true
+            }
             else -> super.onKeyDown(keyCode, event)
         }
+    }
+    
+    /**
+     * Maneja la entrada de números para cambio de canal.
+     * Muestra un overlay con los dígitos ingresados y cambia al canal después de un timeout.
+     */
+    private fun handleChannelNumberInput(digit: Int) {
+        channelNumberInput.append(digit)
+        showChannelNumberOverlay(channelNumberInput.toString())
+        
+        // Cancelar timeout anterior
+        handler.removeCallbacks(hideChannelNumberRunnable)
+        
+        // Programar cambio de canal después del timeout
+        handler.postDelayed({
+            val channelNumber = channelNumberInput.toString().toIntOrNull()
+            if (channelNumber != null) {
+                changeToChannel(channelNumber)
+            }
+            channelNumberInput.clear()
+            hideChannelNumberOverlay()
+        }, channelNumberTimeout)
+    }
+    
+    /**
+     * Muestra un overlay con el número de canal ingresado.
+     */
+    private fun showChannelNumberOverlay(number: String) {
+        binding.channelNumberOverlay.text = number
+        binding.channelNumberOverlay.visibility = View.VISIBLE
+    }
+    
+    /**
+     * Oculta el overlay del número de canal.
+     */
+    private fun hideChannelNumberOverlay() {
+        handler.postDelayed({
+            binding.channelNumberOverlay.visibility = View.GONE
+        }, 500)
+    }
+    
+    /**
+     * Cambia al canal con el número especificado.
+     */
+    private fun changeToChannel(channelNumber: Int) {
+        val canal = canales.find { it.numero == channelNumber }
+        if (canal != null) {
+            val position = canales.indexOf(canal)
+            if (position >= 0) {
+                currentPosition = position
+                loadChannel(position)
+            }
+        } else {
+            Toast.makeText(this, "Canal $channelNumber no encontrado", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    /**
+     * Agrega o quita el canal actual de favoritos.
+     */
+    private fun toggleFavorite() {
+        val canal = canales.getOrNull(currentPosition)
+        if (canal != null) {
+            Toast.makeText(this, "Favorito: ${canal.nombre}", Toast.LENGTH_SHORT).show()
+            // TODO: Implementar persistencia de favoritos
+        }
+    }
+    
+    /**
+     * Muestra la guía de programación electrónica (EPG).
+     */
+    private fun showEPG() {
+        val canal = canales.getOrNull(currentPosition)
+        if (canal != null) {
+            Toast.makeText(this, "EPG: ${canal.nombre} (próximamente)", Toast.LENGTH_SHORT).show()
+            // TODO: Implementar funcionalidad de EPG
+        }
+    }
+    
+    /**
+     * Muestra el menú de idioma y subtítulos.
+     */
+    private fun showLanguageSubtitleMenu() {
+        Toast.makeText(this, "Idioma/Subtítulos (próximamente)", Toast.LENGTH_SHORT).show()
+        // TODO: Implementar funcionalidad de idioma/subtítulos
+    }
+    
+    /**
+     * Muestra el menú contextual.
+     */
+    private fun showContextMenu() {
+        val canal = canales.getOrNull(currentPosition)
+        val options = arrayOf(
+            "Información del canal",
+            "Agregar a favoritos",
+            "Idioma/Subtítulos",
+            "Configuración"
+        )
+        AlertDialog.Builder(this)
+            .setTitle(canal?.nombre ?: "Menú")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> Toast.makeText(this, "Información del canal", Toast.LENGTH_SHORT).show()
+                    1 -> toggleFavorite()
+                    2 -> showLanguageSubtitleMenu()
+                    3 -> Toast.makeText(this, "Configuración", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .show()
     }
 
     /**
@@ -572,6 +844,7 @@ class PlayerActivity : AppCompatActivity() {
         handler.removeCallbacks(hideControlsRunnable)
         handler.removeCallbacks(splashTimeoutRunnable)
         handler.removeCallbacks(updateProgressRunnable)
+        handler.removeCallbacks(hideChannelNumberRunnable)
         
         // Liberar recursos del reproductor VLC
         try {
@@ -646,5 +919,180 @@ class PlayerActivity : AppCompatActivity() {
         val minutes = totalSeconds / 60
         val seconds = totalSeconds % 60
         return String.format("%02d:%02d", minutes, seconds)
+    }
+    
+    /**
+     * Asegura que los canales tengan numeración correcta en orden ascendente (1, 2, 3, 4...).
+     * Si los números no están en orden o hay duplicados, los reasigna secuencialmente.
+     * 
+     * @param channels Lista original de canales
+     * @return Lista de canales con numeración corregida en orden ascendente
+     */
+    private fun ensureChannelNumbering(channels: List<Canal>): List<Canal> {
+        return channels.mapIndexed { index, canal ->
+            // Asignar número secuencial empezando desde 1
+            canal.copy(numero = index + 1)
+        }
+    }
+    
+    /**
+     * Abre la lista de canales en un diálogo simple y estable.
+     */
+    private fun openChannelList() {
+        if (isChannelListVisible) {
+            closeChannelList()
+            return
+        }
+        
+        try {
+            // Crear diálogo simple
+            val dialog = android.app.Dialog(this)
+            dialog.setContentView(R.layout.dialog_channel_list)
+            dialog.window?.setLayout(
+                (resources.displayMetrics.widthPixels * 0.4).toInt(),
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            dialog.window?.setGravity(Gravity.END)
+            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+            
+            val linearLayout = dialog.findViewById<LinearLayout>(R.id.linearLayoutChannels)
+            val scrollView = dialog.findViewById<android.widget.ScrollView>(R.id.scrollViewChannels)
+            
+            // Limpiar views anteriores
+            linearLayout.removeAllViews()
+            
+            // Encontrar posición del canal actual
+            val currentCanal = canales.getOrNull(currentPosition)
+            var currentChannelIndex = 0
+            
+            // Crear views simples para cada canal
+            orderedChannels.forEachIndexed { index, canal ->
+                val channelView = createChannelView(canal, index, dialog)
+                linearLayout.addView(channelView)
+                
+                // Marcar el canal actual
+                if (currentCanal != null && canal.id == currentCanal.id) {
+                    currentChannelIndex = index
+                }
+            }
+            
+            // Scroll al canal actual después de que se dibujen los views
+            scrollView.post {
+                val viewToScroll = linearLayout.getChildAt(currentChannelIndex)
+                if (viewToScroll != null) {
+                    scrollView.smoothScrollTo(0, viewToScroll.top)
+                    // Enfocar el canal actual
+                    viewToScroll.requestFocus()
+                    focusedChannelView = viewToScroll
+                    updateChannelViewFocus(viewToScroll, true)
+                }
+            }
+            
+            dialog.setOnDismissListener {
+                isChannelListVisible = false
+                focusedChannelView = null
+                resetControlsTimer()
+            }
+            
+            dialog.show()
+            channelListDialog = dialog
+            isChannelListVisible = true
+            resetControlsTimer()
+            
+        } catch (e: Exception) {
+            android.util.Log.e("PlayerActivity", "Error al abrir lista de canales: ${e.message}", e)
+            Toast.makeText(this, "Error al abrir lista de canales", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    /**
+     * Crea un view simple para un canal.
+     */
+    private fun createChannelView(canal: Canal, index: Int, dialog: android.app.Dialog): View {
+        val view = TextView(this)
+        view.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
+            setMargins(4, 4, 4, 4)
+        }
+        
+        view.text = "${canal.numero}. ${canal.nombre}"
+        view.textSize = 18f
+        view.setTextColor(resources.getColor(android.R.color.white, null))
+        view.setPadding(24, 24, 24, 24)
+        view.background = android.graphics.drawable.ColorDrawable(
+            resources.getColor(R.color.surface_dark, null)
+        )
+        view.isFocusable = true
+        view.isFocusableInTouchMode = true
+        
+        // Listener de foco
+        view.setOnFocusChangeListener { v, hasFocus ->
+            updateChannelViewFocus(v, hasFocus)
+        }
+        
+        // Listener de clic/OK
+        view.setOnClickListener {
+            selectChannel(canal, dialog)
+        }
+        
+        view.setOnKeyListener { _, keyCode, event ->
+            if (event.action == android.view.KeyEvent.ACTION_DOWN) {
+                when (keyCode) {
+                    android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                    android.view.KeyEvent.KEYCODE_ENTER -> {
+                        selectChannel(canal, dialog)
+                        true
+                    }
+                    else -> false
+                }
+            } else {
+                false
+            }
+        }
+        
+        return view
+    }
+    
+    /**
+     * Actualiza el estilo visual del view según el foco.
+     */
+    private fun updateChannelViewFocus(view: View, hasFocus: Boolean) {
+        if (hasFocus) {
+            view.background = android.graphics.drawable.ColorDrawable(
+                resources.getColor(R.color.primary_tv, null)
+            )
+            focusedChannelView = view
+        } else {
+            view.background = android.graphics.drawable.ColorDrawable(
+                resources.getColor(R.color.surface_dark, null)
+            )
+        }
+    }
+    
+    /**
+     * Selecciona un canal y cierra el diálogo.
+     */
+    private fun selectChannel(canal: Canal, dialog: android.app.Dialog) {
+        val originalPosition = canales.indexOfFirst { it.id == canal.id }
+        if (originalPosition >= 0) {
+            currentPosition = originalPosition
+            loadChannel(originalPosition)
+            dialog.dismiss()
+            closeChannelList()
+        }
+    }
+    
+    /**
+     * Cierra la lista de canales.
+     */
+    private fun closeChannelList() {
+        channelListDialog?.dismiss()
+        channelListDialog = null
+        isChannelListVisible = false
+        focusedChannelView = null
+        binding.playPauseButton.requestFocus()
+        resetControlsTimer()
     }
 } 
