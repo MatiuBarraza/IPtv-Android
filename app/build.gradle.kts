@@ -11,10 +11,47 @@ android {
         applicationId = "com.example.iptvcpruebadesdecero"
         minSdk = 29  // Android 10+ (dispositivos desde 2019) - Máxima compatibilidad
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    flavorDimensions += "version"
+
+    // NOTA: Cuando hay productFlavors, debes especificar el flavor al ejecutar tareas:
+    // - En Android Studio: Build Variants → selecciona el flavor deseado
+    // - En línea de comandos: usa tareas específicas como assembleFullDebug, assembleNewDevicesDebug, etc.
+    productFlavors {
+        create("full") {
+            dimension = "version"
+            applicationIdSuffix = ".full"
+            versionNameSuffix = "-full"
+            minSdk = 21
+            targetSdk = 34
+        }
+
+        create("newDevices") {
+            dimension = "version"
+            applicationIdSuffix = ".new"
+            versionNameSuffix = "-new"
+            minSdk = 29  // Android 10+
+            targetSdk = 34
+            ndk {
+                abiFilters += "arm64-v8a"
+            }
+        }
+
+        create("oldDevices") {
+            dimension = "version"
+            applicationIdSuffix = ".old"
+            versionNameSuffix = "-old"
+            minSdk = 21
+            targetSdk = 28  // Mejor compatibilidad
+            ndk {
+                abiFilters += "armeabi-v7a"
+            }
+        }
     }
 
     buildTypes {
@@ -28,9 +65,7 @@ android {
             // Optimizaciones adicionales para reducir tamaño
             isDebuggable = false
             isJniDebuggable = false
-            isRenderscriptDebuggable = false
             isPseudoLocalesEnabled = false
-            isZipAlignEnabled = true
         }
         debug {
             isMinifyEnabled = false
@@ -64,13 +99,57 @@ android {
         }
     }
     
-    // Splits por ABI solo para dispositivos reales
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("armeabi-v7a", "arm64-v8a")  // Solo dispositivos reales
-            isUniversalApk = false
+    // Splits por ABI deshabilitado - los flavors manejan los filtros ABI
+    // splits {
+    //     abi {
+    //         isEnable = true
+    //         reset()
+    //         include("armeabi-v7a", "arm64-v8a")  // Solo dispositivos reales
+    //         isUniversalApk = false
+    //     }
+    // }
+}
+
+// Solución para resolver ambigüedad: crear tareas alias que apunten al flavor "full"
+// Esto permite ejecutar tareas genéricas sin especificar el flavor
+afterEvaluate {
+    val defaultFlavor = "full"
+    
+    // Mapeo de tareas genéricas a tareas específicas del flavor "full"
+    val taskMappings = mapOf(
+        "assembleDebug" to "assemble${defaultFlavor.capitalize()}Debug",
+        "assembleRelease" to "assemble${defaultFlavor.capitalize()}Release",
+        "assembleDebugUnitTest" to "assemble${defaultFlavor.capitalize()}DebugUnitTest",
+        "assembleDebugAndroidTest" to "assemble${defaultFlavor.capitalize()}DebugAndroidTest",
+        "testDebugUnitTest" to "test${defaultFlavor.capitalize()}DebugUnitTest",
+        "connectedDebugAndroidTest" to "connected${defaultFlavor.capitalize()}DebugAndroidTest",
+        "installDebug" to "install${defaultFlavor.capitalize()}Debug",
+        "installRelease" to "install${defaultFlavor.capitalize()}Release",
+        "uninstallDebug" to "uninstall${defaultFlavor.capitalize()}Debug",
+        "uninstallRelease" to "uninstall${defaultFlavor.capitalize()}Release"
+    )
+    
+    taskMappings.forEach { (genericName, specificName) ->
+        val specificTask = tasks.findByName(specificName)
+        if (specificTask != null) {
+            // Buscar si existe una tarea con este nombre (puede ser ambigua)
+            val existingTasks = tasks.matching { it.name == genericName }
+            
+            if (existingTasks.isEmpty()) {
+                // Si no existe, crear una nueva tarea alias
+                tasks.register(genericName) {
+                    group = "build"
+                    description = "Ejecuta $specificName (flavor '$defaultFlavor' por defecto)"
+                    dependsOn(specificTask)
+                }
+            } else {
+                // Si existe (puede ser ambigua), intentar configurarla
+                existingTasks.forEach { task ->
+                    if (task != specificTask) {
+                        task.dependsOn(specificTask)
+                    }
+                }
+            }
         }
     }
 }

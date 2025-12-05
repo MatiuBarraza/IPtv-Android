@@ -37,6 +37,20 @@
             android:src="@android:drawable/ic_menu_search"
             android:tint="@color/white" />
 
+        <!-- Botón de refrescar lista -->
+        <ImageButton
+            android:id="@+id/refreshButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/focus_selector"
+            android:contentDescription="Refrescar lista"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:padding="12dp"
+            android:src="@android:drawable/ic_menu_rotate"
+            android:tint="@color/white" />
+
         <View
             android:layout_width="0dp"
             android:layout_height="1dp"

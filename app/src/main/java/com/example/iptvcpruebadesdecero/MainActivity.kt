@@ -63,6 +63,7 @@ class MainActivity : AppCompatActivity() {
             setupViewModel() // Configurar el ViewModel
             setupRecyclerView() // Configurar la lista de categorías
             setupSearch() // Configurar la búsqueda
+            setupRefresh() // Configurar botón de refrescar
             setupLogout() // Configurar botón de cerrar sesión
             setupGlideConfiguration() // Optimizar carga de imágenes
             observeViewModel() // Observar cambios en los datos
@@ -201,6 +202,18 @@ class MainActivity : AppCompatActivity() {
     }
     
     /**
+     * Configura el botón de refrescar la lista.
+     */
+    private fun setupRefresh() {
+        binding.refreshButton.isFocusable = true
+        binding.refreshButton.isFocusableInTouchMode = true
+        
+        binding.refreshButton.setOnClickListener {
+            refrescarLista()
+        }
+    }
+    
+    /**
      * Configura el botón de cerrar sesión.
      */
     private fun setupLogout() {
@@ -214,11 +227,11 @@ class MainActivity : AppCompatActivity() {
     
     /**
      * Realiza el cierre de sesión y vuelve a LoginActivity.
+     * Las credenciales se mantienen guardadas para facilitar el siguiente inicio de sesión.
      */
     private fun performLogout() {
-        // Limpiar credenciales guardadas
-        val prefs = getSharedPreferences("LoginPrefs", android.content.Context.MODE_PRIVATE)
-        prefs.edit().clear().apply()
+        // NO limpiar credenciales guardadas - se mantienen para el próximo login
+        // Las credenciales permanecen en SharedPreferences para facilitar el acceso
         
         // Navegar a LoginActivity
         val intent = Intent(this, LoginActivity::class.java)
@@ -367,6 +380,32 @@ class MainActivity : AppCompatActivity() {
             binding.progressBar.visibility = View.GONE
         }
     }
+    
+    /**
+     * Refresca la lista de canales recargando la playlist.
+     * Limpia la búsqueda activa y recarga los datos desde el archivo guardado.
+     */
+    private fun refrescarLista() {
+        try {
+            // Limpiar búsqueda activa si existe
+            binding.searchLayout.visibility = View.GONE
+            binding.searchEditText.text?.clear()
+            
+            // Mostrar indicador de progreso
+            binding.progressBar.visibility = View.VISIBLE
+            binding.textViewMensaje.visibility = View.GONE
+            
+            // Recargar la playlist
+            viewModel.cargarPlaylist(this)
+            
+            // Mostrar mensaje de confirmación
+            Toast.makeText(this, "Refrescando lista...", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error al refrescar lista: ${e.message}", e)
+            Toast.makeText(this, "Error al refrescar la lista: ${e.message}", Toast.LENGTH_SHORT).show()
+            binding.progressBar.visibility = View.GONE
+        }
+    }
 
     /**
      * Maneja los eventos de teclado para navegación con control remoto.
@@ -433,6 +472,10 @@ class MainActivity : AppCompatActivity() {
                 when (focusedView) {
                     binding.searchButton -> {
                         toggleSearch()
+                        true
+                    }
+                    binding.refreshButton -> {
+                        refrescarLista()
                         true
                     }
                     binding.logoutButton -> {

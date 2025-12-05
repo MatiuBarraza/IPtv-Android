@@ -94,6 +94,9 @@ class PlayerActivity : AppCompatActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Mantener la pantalla activa (no se bloqueará automáticamente)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        
         binding = ActivityPlayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -840,6 +843,9 @@ class PlayerActivity : AppCompatActivity() {
      */
     override fun onDestroy() {
         super.onDestroy()
+        // Limpiar el flag de mantener pantalla activa
+        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        
         // Limpiar todos los callbacks programados
         handler.removeCallbacks(hideControlsRunnable)
         handler.removeCallbacks(splashTimeoutRunnable)
