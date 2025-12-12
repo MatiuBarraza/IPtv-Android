@@ -1,30 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
-                android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
+    
+    <!-- Televisor con antenas - Contorno rojo con efecto neón -->
+    <!-- Antenas superiores -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+        android:pathData="M40,20 L40,15 M68,20 L68,15"
+        android:strokeColor="#FF4444"
+        android:strokeWidth="2.5"/>
+    
+    <!-- Contorno del televisor -->
+    <path
+        android:pathData="M25,25 L25,70 L83,70 L83,25 Z"
+        android:strokeColor="#FF4444"
+        android:strokeWidth="3"
+        android:fillColor="#00000000"/>
+    
+    <!-- Pantalla superior azul -->
+    <path
+        android:pathData="M30,30 L30,47.5 L78,47.5 L78,30 Z"
+        android:fillColor="#4A9EFF"
+        android:fillAlpha="0.9"/>
+    
+    <!-- Pantalla inferior verde -->
+    <path
+        android:pathData="M30,47.5 L30,65 L78,65 L78,47.5 Z"
+        android:fillColor="#4AFF88"
+        android:fillAlpha="0.9"/>
+    
+    <!-- Texto "Ctvc" en la parte superior azul -->
+    <path
+        android:pathData="M35,35 L35,45 L38,45 L38,38 L40,45 L43,45 L40,38 L43,38 L43,35 Z M46,35 L46,45 L49,45 L49,38 L52,45 L55,45 L52,38 L55,38 L55,35 Z M58,35 L58,45 L61,45 L61,38 L64,45 L67,45 L64,38 L67,38 L67,35 Z M70,35 L70,45 L73,45 L73,38 L76,45 L79,45 L76,38 L79,38 L79,35 Z"
+        android:fillColor="#6BB6FF"
+        android:fillType="evenOdd"/>
+    
+    <!-- Texto "IpTV" en la parte inferior verde -->
+    <path
+        android:pathData="M35,52 L35,62 L38,62 L38,55 L41,62 L44,62 L41,55 L44,55 L44,52 Z M47,52 L47,62 L50,62 L50,55 L53,62 L56,62 L53,55 L56,55 L56,52 Z M59,52 L59,62 L62,62 L62,55 L65,62 L68,62 L65,55 L68,55 L68,52 Z M71,52 L71,62 L74,62 L74,55 L77,62 L80,62 L77,55 L80,55 L80,52 Z"
+        android:fillColor="#FF8844"
+        android:fillType="evenOdd"/>
+    
+    <!-- Rama izquierda verde -->
+    <path
+        android:pathData="M15,35 Q20,25 25,30 Q20,50 25,60 Q20,75 25,85"
+        android:strokeColor="#4AFF88"
+        android:strokeWidth="2.5"
+        android:fillColor="#00000000"/>
+    
+    <!-- Hojas izquierda -->
+    <path
+        android:pathData="M18,40 L20,38 L22,40 L20,42 Z M20,55 L22,53 L24,55 L22,57 Z M22,70 L24,68 L26,70 L24,72 Z"
+        android:fillColor="#4AFF88"
+        android:fillAlpha="0.8"/>
+    
+    <!-- Rama derecha naranja -->
+    <path
+        android:pathData="M93,35 Q88,25 83,30 Q88,50 83,60 Q88,75 83,85"
+        android:strokeColor="#FF8844"
+        android:strokeWidth="2.5"
+        android:fillColor="#00000000"/>
+    
+    <!-- Hojas derecha -->
+    <path
+        android:pathData="M90,40 L88,38 L86,40 L88,42 Z M88,55 L86,53 L84,55 L86,57 Z M86,70 L84,68 L82,70 L84,72 Z"
+        android:fillColor="#FF8844"
+        android:fillAlpha="0.8"/>
+    
 </vector>

@@ -9,6 +9,8 @@
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
     <!-- Configuración principal de la aplicación -->
+    <!-- Icono del launcher (icono de la app instalada) - Ubicado en mipmap-* -->
+    <!-- Logo interno de la empresa (usado en login y banner) - Ubicado en drawable/logo_empresa.png -->
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -19,8 +21,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.IPTVPruebaDesdeCero"
         android:usesCleartextTraffic="true"
-        android:banner="@drawable/logo_empresa"
-        tools:targetApi="29">
+        android:banner="@mipmap/ic_launcher"
+        tools:targetApi="35">
 
         <activity
             android:name=".SplashActivity"

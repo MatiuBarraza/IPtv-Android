@@ -22,4 +22,26 @@
     <color name="button_green">#FF00E676</color>
     <color name="button_yellow">#FFFFD600</color>
     <color name="button_blue">#FF2196F3</color>
+    
+    <!-- Colores de marca CTVC -->
+    <color name="ctvc_green">#4CAF50</color>
+    <color name="ctvc_green_dark">#388E3C</color>
+    <color name="ctvc_green_light">#81C784</color>
+    <color name="ctvc_blue">#2196F3</color>
+    <color name="ctvc_blue_dark">#1976D2</color>
+    <color name="ctvc_blue_light">#64B5F6</color>
+    <color name="ctvc_orange">#FF9800</color>
+    <color name="ctvc_orange_dark">#F57C00</color>
+    <color name="ctvc_orange_light">#FFB74D</color>
+    
+    <!-- Colores para login -->
+    <color name="login_input_bg">#FFFFFF</color>
+    <color name="login_input_border">#E0E0E0</color>
+    <color name="login_input_border_focused">#2196F3</color>
+    <color name="login_button_bg">#4CAF50</color>
+    <color name="login_button_bg_focused">#66BB6A</color>
+    <color name="login_button_bg_disabled">#BDBDBD</color>
+    <color name="login_text_primary">#212121</color>
+    <color name="login_text_secondary">#757575</color>
+    <color name="login_text_hint">#9E9E9E</color>
 </resources>

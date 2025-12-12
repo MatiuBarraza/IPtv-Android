@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Imagen de fondo -->
+    <item>
+        <bitmap
+            android:src="@drawable/fondo31"
+            android:gravity="fill" />
+    </item>
+    <!-- Overlay semitransparente para reducir saturación y mejorar legibilidad -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#80000000" />
+        </shape>
+    </item>
+</layer-list>
+

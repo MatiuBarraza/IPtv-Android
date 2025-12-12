@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_enabled="false">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/login_button_bg_disabled" />
+            <corners android:radius="10dp" />
+        </shape>
+    </item>
+    <item android:state_focused="true" android:state_pressed="false">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/login_button_bg_focused" />
+                    <corners android:radius="10dp" />
+                </shape>
+            </item>
+            <item>
+                <shape android:shape="rectangle">
+                    <stroke
+                        android:width="3dp"
+                        android:color="@color/ctvc_orange" />
+                    <corners android:radius="10dp" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/ctvc_green_dark" />
+            <corners android:radius="10dp" />
+        </shape>
+    </item>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/login_button_bg" />
+                    <corners android:radius="10dp" />
+                </shape>
+            </item>
+</selector>
+
